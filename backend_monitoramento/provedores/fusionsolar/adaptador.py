@@ -8,7 +8,7 @@ import requests
 
 from provedores.base import AdaptadorProvedor, CapacidadesProvedor, DadosUsina, DadosInversor, DadosAlerta
 from .autenticacao import fazer_login
-from .consultas import listar_usinas, listar_inversores, listar_alertas
+from .consultas import listar_usinas, listar_todos_inversores, listar_alertas
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,9 @@ class FusionSolarAdaptador(AdaptadorProvedor):
         else:
             self._autenticado = False
 
+        # Cache de inversores preenchido em buscar_usinas() para evitar N chamadas à API
+        self._cache_inversores: dict[str, list] | None = None
+
     @property
     def chave_provedor(self) -> str:
         return 'fusionsolar'
@@ -58,6 +61,11 @@ class FusionSolarAdaptador(AdaptadorProvedor):
             # FusionSolar tem limite rígido de frequência — 1 req a cada 5s por usina
             limite_requisicoes=1,
             janela_segundos=5,
+            # Intervalo mínimo entre coletas: 15 min conforme documentação oficial da API.
+            # O valor anterior (2100s/35min) foi ajustado empiricamente por rate limit do usuário
+            # compartilhado. Com usuário dedicado (1 API por usuário, conforme doc Huawei),
+            # o intervalo de 900s é suficiente.
+            min_intervalo_coleta_segundos=900,
         )
 
     def _garantir_autenticado(self):
@@ -81,11 +89,24 @@ class FusionSolarAdaptador(AdaptadorProvedor):
     def buscar_usinas(self) -> list[DadosUsina]:
         self._garantir_autenticado()
         registros = listar_usinas(self._sessao, self._usuario, self._system_code)
-        return [self._normalizar_usina(r) for r in registros]
+        usinas = [self._normalizar_usina(r) for r in registros]
+
+        # Pré-carrega todos os inversores em lote logo após buscar as usinas.
+        # Isso evita 50 chamadas individuais a /getDevList (uma por usina),
+        # que causaria rate limit 407 da FusionSolar com carteiras grandes.
+        codigos = [r.get('stationCode', '') for r in registros if r.get('stationCode')]
+        self._cache_inversores = listar_todos_inversores(
+            codigos, self._sessao, self._usuario, self._system_code
+        )
+        return usinas
 
     def buscar_inversores(self, id_usina_provedor: str) -> list[DadosInversor]:
-        self._garantir_autenticado()
-        registros = listar_inversores(id_usina_provedor, self._sessao, self._usuario, self._system_code)
+        """Retorna inversores do cache preenchido em buscar_usinas()."""
+        if self._cache_inversores is None:
+            # Fallback: cache não preenchido (situação inesperada)
+            logger.warning('FusionSolar: cache de inversores vazio ao buscar %s', id_usina_provedor)
+            return []
+        registros = self._cache_inversores.get(id_usina_provedor, [])
         return [self._normalizar_inversor(r, id_usina_provedor) for r in registros]
 
     def buscar_alertas(self, id_usina_provedor: str | None = None) -> list[DadosAlerta]:
@@ -152,14 +173,26 @@ class FusionSolarAdaptador(AdaptadorProvedor):
         )
 
     def _normalizar_alerta(self, r: dict) -> DadosAlerta:
+        alarm_id = str(r.get('alarmId') or '')
+        dev_sn = r.get('devSn') or ''
+
+        # Chave de deduplicação: tipo de alarme + serial do dispositivo.
+        # Usar só devSn causaria conflito se um inversor tiver 2 alarmes diferentes ativos.
+        id_alerta = f'{alarm_id}_{dev_sn}' if alarm_id and dev_sn else (alarm_id or dev_sn or '')
+
+        # FusionSolar alarmLevel: 1=crítico, 2=importante, 3=aviso, 4=info
+        _NIVEL_MAP = {1: 'critico', 2: 'importante', 3: 'aviso', 4: 'info'}
+        nivel = _NIVEL_MAP.get(r.get('alarmLevel'), 'aviso')
+
         return DadosAlerta(
-            id_alerta_provedor=str(r.get('sn') or r.get('devSn') or ''),
+            id_alerta_provedor=id_alerta,
             id_usina_provedor=r.get('stationCode') or '',
-            mensagem=r.get('alarmName') or r.get('alarmId') or '',
-            nivel='critico' if r.get('alarmLevel') == 1 else 'aviso',
+            mensagem=r.get('alarmName') or alarm_id or '',
+            nivel=nivel,
             inicio=datetime.now(timezone.utc),
-            equipamento_sn=r.get('devSn') or '',
+            equipamento_sn=dev_sn,
             estado='ativo',
             sugestao=r.get('repairSuggestion') or '',
+            id_tipo_alarme_provedor=alarm_id,
             payload_bruto=r,
         )

@@ -1,36 +1,36 @@
 services:
-  prometheus:
-    image: prom/prometheus:v2.51.0
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./prometheus/metrics_token.txt:/etc/prometheus/metrics_token.txt:ro
-      - ../data/prometheus:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=1y'
-      - '--web.enable-lifecycle'
-    ports:
-      - "9090:9090"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-
   grafana:
     image: grafana/grafana:10.4.0
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - ../data/grafana:/var/lib/grafana
+      - grafana_data:/var/lib/grafana
+    env_file: .env
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:?GF_ADMIN_PASSWORD obrigatório no .env}
       - GF_SERVER_ROOT_URL=http://localhost:3000
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      # Credenciais do PostgreSQL — repassadas para o datasource via provisioning
+      # DB_HOST aponta para o serviço db do backend via rede compartilhada firmasolar_obs
+      - DB_HOST=backend_monitoramento-db-1
+      - DB_PORT=5432
+      - DB_NOME=${DB_NOME:?DB_NOME obrigatório no .env}
+      - DB_USUARIO=${DB_USUARIO:?DB_USUARIO obrigatório no .env}
+      - DB_SENHA=${DB_SENHA:?DB_SENHA obrigatório no .env}
     ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
+      # Exposto apenas para localhost — use um reverse proxy (nginx/caddy) para acesso externo
+      - "127.0.0.1:3000:3000"
+    networks:
+      - firmasolar_obs
     restart: unless-stopped
 
+volumes:
+  grafana_data:
+    # Named volume: Docker gerencia ownership (UID 472) automaticamente
+
+networks:
+  firmasolar_obs:
+    external: true

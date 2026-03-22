@@ -1,15 +1,15 @@
 {
-  "title": "Firma Solar — Painel de Suporte Técnico",
+  "title": "Firma Solar — DEV / Infra",
   "uid": "firma-solar-suporte",
   "schemaVersion": 38,
-  "version": 1,
-  "refresh": "1m",
+  "version": 3,
+  "refresh": "30s",
   "time": { "from": "now-24h", "to": "now" },
   "panels": [
 
     {
       "id": 1,
-      "title": "🔴 Usinas Offline",
+      "title": "Provedores Ativos",
       "type": "stat",
       "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
       "options": {
@@ -24,17 +24,17 @@
           "color": { "mode": "thresholds" },
           "thresholds": {
             "steps": [
-              { "color": "green", "value": 0 },
-              { "color": "red", "value": 1 }
+              { "color": "red",   "value": 0 },
+              { "color": "green", "value": 1 }
             ]
           }
         }
       },
       "targets": [
         {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "count(solar_usina_status == 2) or vector(0)",
-          "instant": true,
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*) FROM provedores_credencialprovedor WHERE ativo = true",
+          "format": "table",
           "refId": "A"
         }
       ]
@@ -42,7 +42,7 @@
 
     {
       "id": 2,
-      "title": "⚠️ Usinas com Alertas",
+      "title": "Sem Coleta Recente (> 20 min)",
       "type": "stat",
       "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
       "options": {
@@ -58,17 +58,16 @@
           "thresholds": {
             "steps": [
               { "color": "green", "value": 0 },
-              { "color": "orange", "value": 1 },
-              { "color": "red", "value": 5 }
+              { "color": "red",   "value": 1 }
             ]
           }
         }
       },
       "targets": [
         {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "count(solar_usina_qtd_alertas > 0) or vector(0)",
-          "instant": true,
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*) FROM provedores_credencialprovedor c WHERE c.ativo = true AND NOT EXISTS (SELECT 1 FROM coleta_logcoleta l WHERE l.credencial_id = c.id AND l.status = 'sucesso' AND l.iniciado_em > NOW() - INTERVAL '20 minutes')",
+          "format": "table",
           "refId": "A"
         }
       ]
@@ -76,7 +75,7 @@
 
     {
       "id": 3,
-      "title": "🔗 Providers sem Coleta (> 20 min)",
+      "title": "Erro de Autenticação",
       "type": "stat",
       "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
       "options": {
@@ -92,16 +91,16 @@
           "thresholds": {
             "steps": [
               { "color": "green", "value": 0 },
-              { "color": "red", "value": 1 }
+              { "color": "red",   "value": 1 }
             ]
           }
         }
       },
       "targets": [
         {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "count((time() - solar_ultima_coleta_timestamp) > 1200) or vector(0)",
-          "instant": true,
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*) FROM provedores_credencialprovedor WHERE precisa_atencao = true AND ativo = true",
+          "format": "table",
           "refId": "A"
         }
       ]
@@ -109,9 +108,46 @@
 
     {
       "id": 4,
-      "title": "🔑 Credenciais com Erro de Auth",
+      "title": "Taxa de Sucesso (24h)",
       "type": "stat",
       "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 42 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "—",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red",    "value": 0   },
+              { "color": "orange", "value": 70  },
+              { "color": "yellow", "value": 85  },
+              { "color": "green",  "value": 95  }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT ROUND(100.0 * COUNT(CASE WHEN status = 'sucesso' THEN 1 END) / NULLIF(COUNT(*), 0), 1) FROM coleta_logcoleta WHERE iniciado_em > NOW() - INTERVAL '24 hours'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "title": "Erros nas Últimas 24h",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -124,50 +160,18 @@
           "color": { "mode": "thresholds" },
           "thresholds": {
             "steps": [
-              { "color": "green", "value": 0 },
-              { "color": "red", "value": 1 }
+              { "color": "green",  "value": 0 },
+              { "color": "orange", "value": 1 },
+              { "color": "red",    "value": 5 }
             ]
           }
         }
       },
       "targets": [
         {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "sum(solar_credencial_precisa_atencao) or vector(0)",
-          "instant": true,
-          "refId": "A"
-        }
-      ]
-    },
-
-    {
-      "id": 5,
-      "title": "⚡ Potência Total",
-      "type": "stat",
-      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "reduceOptions": { "calcs": ["lastNotNull"] }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "kwatt",
-          "noValue": "0",
-          "color": { "mode": "thresholds" },
-          "thresholds": {
-            "steps": [
-              { "color": "red", "value": 0 },
-              { "color": "yellow", "value": 1 },
-              { "color": "green", "value": 10 }
-            ]
-          }
-        }
-      },
-      "targets": [
-        {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "sum(solar_usina_potencia_kw)",
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*) FROM coleta_logcoleta WHERE status IN ('erro', 'auth_erro') AND iniciado_em > NOW() - INTERVAL '24 hours'",
+          "format": "table",
           "refId": "A"
         }
       ]
@@ -175,105 +179,38 @@
 
     {
       "id": 6,
-      "title": "☀️ Energia Hoje",
+      "title": "Última Coleta Bem-sucedida",
       "type": "stat",
       "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
       "options": {
-        "colorMode": "background",
+        "colorMode": "none",
         "graphMode": "none",
-        "reduceOptions": { "calcs": ["lastNotNull"] }
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 22 }
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "kwatth",
-          "noValue": "0",
-          "decimals": 1,
-          "color": { "mode": "fixed", "fixedColor": "blue" }
+          "unit": "dateTimeFromNow",
+          "noValue": "Nunca",
+          "color": { "mode": "fixed", "fixedColor": "text" }
         }
       },
       "targets": [
         {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "sum(solar_usina_energia_hoje_kwh) / 1000",
-          "legendFormat": "MWh",
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT EXTRACT(EPOCH FROM MAX(iniciado_em)) * 1000 FROM coleta_logcoleta WHERE status = 'sucesso'",
+          "format": "table",
           "refId": "A"
         }
       ]
     },
 
     {
-      "id": 20,
-      "title": "🔴 Problemas Ativos — Alertas Críticos",
+      "id": 10,
+      "title": "Status por Provider",
       "type": "table",
-      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 7 },
       "options": {
-        "sortBy": [{ "displayName": "Usina", "desc": false }],
-        "cellHeight": "sm",
-        "footer": { "show": false }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": { "align": "left" },
-          "noValue": "—"
-        },
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "custom.hidden", "value": true }] },
-          { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "custom.hidden", "value": true }] },
-          {
-            "matcher": { "id": "byName", "options": "nome_usina" },
-            "properties": [
-              { "id": "displayName", "value": "Usina" },
-              { "id": "custom.width", "value": 220 }
-            ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "provedor" },
-            "properties": [
-              { "id": "displayName", "value": "Provider" },
-              { "id": "custom.width", "value": 110 }
-            ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "mensagem" },
-            "properties": [
-              { "id": "displayName", "value": "Descrição do Problema" },
-              { "id": "custom.width", "value": 420 }
-            ]
-          }
-        ]
-      },
-      "targets": [
-        {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "solar_usina_alerta_ativo{nivel=\"critico\"} == 1",
-          "instant": true,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "transformations": [
-        { "id": "labelsToFields", "options": { "mode": "columns" } },
-        {
-          "id": "organize",
-          "options": {
-            "includeByName": {
-              "nome_usina": true,
-              "provedor": true,
-              "mensagem": true
-            },
-            "excludeByName": { "Time": true, "Value": true, "id_usina": true, "nivel": true }
-          }
-        }
-      ]
-    },
-
-    {
-      "id": 21,
-      "title": "Status de Coleta por Provider",
-      "type": "table",
-      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 7 },
-      "options": {
-        "sortBy": [{ "displayName": "Minutos desde última coleta", "desc": true }],
         "cellHeight": "sm",
         "footer": { "show": false }
       },
@@ -281,16 +218,27 @@
         "defaults": { "custom": { "align": "left" } },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "provedor" },
+            "matcher": { "id": "byName", "options": "Provider" },
+            "properties": [{ "id": "custom.width", "value": 140 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Credencial" },
             "properties": [
-              { "id": "displayName", "value": "Provider" },
-              { "id": "custom.width", "value": 130 }
+              { "id": "custom.width", "value": 160 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "ok":       { "text": "OK",          "color": "green", "index": 0 } } },
+                  { "type": "value", "options": { "atencao":  { "text": "Verificar",   "color": "red",   "index": 1 } } },
+                  { "type": "value", "options": { "inativo":  { "text": "Inativo",     "color": "gray",  "index": 2 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Value #A" },
+            "matcher": { "id": "byName", "options": "Min. desde últ. sucesso" },
             "properties": [
-              { "id": "displayName", "value": "Minutos desde última coleta" },
               { "id": "unit", "value": "m" },
               { "id": "decimals", "value": 1 },
               { "id": "custom.width", "value": 200 },
@@ -300,111 +248,22 @@
                 "id": "thresholds",
                 "value": {
                   "steps": [
-                    { "color": "green", "value": 0 },
-                    { "color": "yellow", "value": 15 },
-                    { "color": "orange", "value": 30 },
-                    { "color": "red", "value": 60 }
+                    { "color": "green",  "value": 0  },
+                    { "color": "yellow", "value": 20 },
+                    { "color": "orange", "value": 40 },
+                    { "color": "red",    "value": 60 }
                   ]
                 }
               }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Value #B" },
-            "properties": [
-              { "id": "displayName", "value": "Credencial com problema" },
-              { "id": "custom.width", "value": 170 },
-              {
-                "id": "mappings",
-                "value": [
-                  { "type": "value", "options": { "0": { "text": "✅ OK", "color": "green", "index": 0 } } },
-                  { "type": "range", "options": { "from": 1, "to": 999, "result": { "text": "🔴 Verificar credencial", "color": "red" } } }
-                ]
-              },
-              { "id": "custom.displayMode", "value": "color-background" }
-            ]
-          }
-        ]
-      },
-      "targets": [
-        {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "(time() - solar_ultima_coleta_timestamp) / 60",
-          "instant": true,
-          "format": "table",
-          "legendFormat": "",
-          "refId": "A"
-        },
-        {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "solar_credencial_precisa_atencao",
-          "instant": true,
-          "format": "table",
-          "legendFormat": "",
-          "refId": "B"
-        }
-      ],
-      "transformations": [
-        { "id": "labelsToFields", "options": { "mode": "columns" } },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": { "Time": true }
-          }
-        }
-      ]
-    },
-
-    {
-      "id": 22,
-      "title": "Erros de Coleta nas Últimas 24h",
-      "type": "table",
-      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 7 },
-      "options": {
-        "sortBy": [{ "displayName": "Erros", "desc": true }],
-        "cellHeight": "sm",
-        "footer": { "show": false }
-      },
-      "fieldConfig": {
-        "defaults": { "custom": { "align": "left" } },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "provedor" },
-            "properties": [
-              { "id": "displayName", "value": "Provider" },
-              { "id": "custom.width", "value": 130 }
-            ]
+            "matcher": { "id": "byName", "options": "Sucessos 24h" },
+            "properties": [{ "id": "custom.width", "value": 120 }]
           },
           {
-            "matcher": { "id": "byName", "options": "Value #A" },
+            "matcher": { "id": "byName", "options": "Falhas 24h" },
             "properties": [
-              { "id": "displayName", "value": "Sucesso 24h" },
-              { "id": "custom.width", "value": 110 }
-            ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Value #B" },
-            "properties": [
-              { "id": "displayName", "value": "Erros 24h" },
-              { "id": "custom.width", "value": 90 },
-              { "id": "custom.displayMode", "value": "color-background" },
-              { "id": "color", "value": { "mode": "thresholds" } },
-              {
-                "id": "thresholds",
-                "value": {
-                  "steps": [
-                    { "color": "green", "value": 0 },
-                    { "color": "orange", "value": 1 },
-                    { "color": "red", "value": 3 }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Value #C" },
-            "properties": [
-              { "id": "displayName", "value": "Erro de Auth" },
               { "id": "custom.width", "value": 110 },
               { "id": "custom.displayMode", "value": "color-background" },
               { "id": "color", "value": { "mode": "thresholds" } },
@@ -412,57 +271,47 @@
                 "id": "thresholds",
                 "value": {
                   "steps": [
-                    { "color": "green", "value": 0 },
-                    { "color": "red", "value": 1 }
+                    { "color": "green",  "value": 0 },
+                    { "color": "orange", "value": 1 },
+                    { "color": "red",    "value": 3 }
                   ]
                 }
               }
             ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Dur. média (ms)" },
+            "properties": [
+              { "id": "custom.width", "value": 150 },
+              { "id": "unit", "value": "ms" },
+              { "id": "decimals", "value": 0 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Usinas" },
+            "properties": [{ "id": "custom.width", "value": 90 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Inversores" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
           }
         ]
       },
       "targets": [
         {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "solar_coleta_24h_total{status=\"sucesso\"} or (label_replace(solar_ultima_coleta_timestamp * 0, \"status\", \"sucesso\", \"\", \"\"))",
-          "instant": true,
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT c.provedor AS \"Provider\", CASE WHEN NOT c.ativo THEN 'inativo' WHEN c.precisa_atencao THEN 'atencao' ELSE 'ok' END AS \"Credencial\", ROUND(EXTRACT(EPOCH FROM (NOW() - MAX(CASE WHEN l.status = 'sucesso' THEN l.iniciado_em END))) / 60, 1) AS \"Min. desde últ. sucesso\", COUNT(CASE WHEN l.status = 'sucesso' AND l.iniciado_em > NOW() - INTERVAL '24 hours' THEN 1 END) AS \"Sucessos 24h\", COUNT(CASE WHEN l.status IN ('erro', 'auth_erro', 'parcial') AND l.iniciado_em > NOW() - INTERVAL '24 hours' THEN 1 END) AS \"Falhas 24h\", ROUND(AVG(CASE WHEN l.status = 'sucesso' AND l.iniciado_em > NOW() - INTERVAL '24 hours' THEN l.duracao_ms END)) AS \"Dur. média (ms)\", MAX(CASE WHEN l.status = 'sucesso' AND l.iniciado_em > NOW() - INTERVAL '24 hours' THEN l.usinas_coletadas END) AS \"Usinas\", MAX(CASE WHEN l.status = 'sucesso' AND l.iniciado_em > NOW() - INTERVAL '24 hours' THEN l.inversores_coletados END) AS \"Inversores\" FROM provedores_credencialprovedor c LEFT JOIN coleta_logcoleta l ON l.credencial_id = c.id GROUP BY c.provedor, c.ativo, c.precisa_atencao ORDER BY \"Min. desde últ. sucesso\" DESC NULLS FIRST",
           "format": "table",
-          "legendFormat": "",
           "refId": "A"
-        },
-        {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "solar_coleta_24h_total{status=\"erro\"} or (label_replace(solar_ultima_coleta_timestamp * 0, \"status\", \"erro\", \"\", \"\"))",
-          "instant": true,
-          "format": "table",
-          "legendFormat": "",
-          "refId": "B"
-        },
-        {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "solar_coleta_24h_total{status=\"auth_erro\"} or (label_replace(solar_ultima_coleta_timestamp * 0, \"status\", \"auth_erro\", \"\", \"\"))",
-          "instant": true,
-          "format": "table",
-          "legendFormat": "",
-          "refId": "C"
-        }
-      ],
-      "transformations": [
-        { "id": "labelsToFields", "options": { "mode": "columns" } },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": { "Time": true, "status": true }
-          }
         }
       ]
     },
 
     {
-      "id": 30,
-      "title": "Histórico — Status da Frota (últimas 24h)",
+      "id": 20,
+      "title": "Coletas no Tempo — Sucesso vs Erros",
       "type": "timeseries",
-      "gridPos": { "x": 0, "y": 19, "w": 24, "h": 8 },
+      "gridPos": { "x": 0, "y": 11, "w": 14, "h": 8 },
       "options": {
         "tooltip": { "mode": "multi" },
         "legend": { "displayMode": "list", "placement": "bottom" }
@@ -470,47 +319,145 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
-          "custom": { "lineWidth": 2, "fillOpacity": 10 },
-          "min": 0
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "min": 0,
+          "unit": "short"
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Offline" },
+            "matcher": { "id": "byName", "options": "Sucesso" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Erro" },
             "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
           },
           {
-            "matcher": { "id": "byName", "options": "Com alerta" },
+            "matcher": { "id": "byName", "options": "Parcial" },
             "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT $__timeGroupAlias(l.iniciado_em, '15m'), COUNT(CASE WHEN l.status = 'sucesso' THEN 1 END) AS \"Sucesso\", COUNT(CASE WHEN l.status = 'erro' OR l.status = 'auth_erro' THEN 1 END) AS \"Erro\", COUNT(CASE WHEN l.status = 'parcial' THEN 1 END) AS \"Parcial\" FROM coleta_logcoleta l WHERE $__timeFilter(l.iniciado_em) GROUP BY 1 ORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 21,
+      "title": "Duração das Coletas (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 14, "y": 11, "w": 10, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "min": 0
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT $__timeGroupAlias(l.iniciado_em, '15m'), c.provedor AS metric, ROUND(AVG(l.duracao_ms)) AS duracao_ms FROM coleta_logcoleta l JOIN provedores_credencialprovedor c ON c.id = l.credencial_id WHERE $__timeFilter(l.iniciado_em) AND l.status = 'sucesso' GROUP BY 1, 2 ORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 30,
+      "title": "Log de Erros Recentes",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 19, "w": 24, "h": 9 },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "left" },
+          "noValue": "—"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Quando" },
+            "properties": [
+              { "id": "custom.width", "value": 175 },
+              { "id": "unit", "value": "dateTimeAsIso" }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "Potência (kW)" },
+            "matcher": { "id": "byName", "options": "Provider" },
+            "properties": [{ "id": "custom.width", "value": 130 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Status" },
             "properties": [
-              { "id": "unit", "value": "kwatt" },
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+              { "id": "custom.width", "value": 120 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "erro":      { "text": "Erro",       "color": "red",    "index": 0 } } },
+                  { "type": "value", "options": { "auth_erro": { "text": "Auth Erro",  "color": "purple", "index": 1 } } },
+                  { "type": "value", "options": { "parcial":   { "text": "Parcial",    "color": "orange", "index": 2 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Dur. (ms)" },
+            "properties": [
+              { "id": "custom.width", "value": 110 },
+              { "id": "unit", "value": "ms" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Detalhe do Erro" },
+            "properties": [
+              { "id": "custom.wrap", "value": true }
             ]
           }
         ]
       },
       "targets": [
         {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "count(solar_usina_status == 2) or vector(0)",
-          "legendFormat": "Offline",
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT l.iniciado_em AS \"Quando\", c.provedor AS \"Provider\", l.status AS \"Status\", l.duracao_ms AS \"Dur. (ms)\", l.detalhe_erro AS \"Detalhe do Erro\" FROM coleta_logcoleta l JOIN provedores_credencialprovedor c ON c.id = l.credencial_id WHERE l.status IN ('erro', 'auth_erro', 'parcial') AND l.iniciado_em > NOW() - INTERVAL '7 days' ORDER BY l.iniciado_em DESC LIMIT 50",
+          "format": "table",
           "refId": "A"
-        },
-        {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "count(solar_usina_qtd_alertas > 0) or vector(0)",
-          "legendFormat": "Com alerta",
-          "refId": "B"
-        },
-        {
-          "datasource": { "uid": "prometheus-firmasolar" },
-          "expr": "sum(solar_usina_potencia_kw)",
-          "legendFormat": "Potência (kW)",
-          "refId": "C"
         }
       ]
+    },
+
+    {
+      "id": 40,
+      "title": "Infraestrutura",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+
+    {
+      "id": 41,
+      "type": "text",
+      "title": "VPS — Em breve",
+      "gridPos": { "x": 0, "y": 29, "w": 24, "h": 4 },
+      "options": {
+        "mode": "markdown",
+        "content": "## Monitoramento de Infraestrutura\n\nEsta seção receberá métricas do servidor VPS após instalação do **Node Exporter** (Prometheus):\n\n- CPU (uso %, load average)\n- Memória (RAM e swap)\n- Disco (uso e I/O)\n- Rede (bytes in/out, latência)\n- Uptime e processos\n\n*Configurar datasource Prometheus e adicionar painéis aqui quando o VPS estiver pronto.*"
+      }
     }
 
   ]

@@ -1,10 +1,5 @@
 # Variáveis de ambiente — nunca versionar
 .env
 
-# Token de autenticação do Prometheus → backend
-# Criar com o mesmo valor de METRICAS_TOKEN do backend_monitoramento/.env
-prometheus/metrics_token.txt
-
 # Volumes Docker gerados localmente
 grafana_data/
-prometheus_data/

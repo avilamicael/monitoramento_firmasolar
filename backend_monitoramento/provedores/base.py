@@ -56,12 +56,15 @@ class DadosAlerta:
     id_alerta_provedor: str
     id_usina_provedor: str
     mensagem: str
-    # Nível: 'critico', 'aviso'
+    # Nível: 'info', 'aviso', 'importante', 'critico'
     nivel: str
     inicio: datetime
     equipamento_sn: str = ''
     estado: str = 'ativo'    # 'ativo' ou 'resolvido'
     sugestao: str = ''
+    # ID do *tipo* de alarme no provedor — chave de lookup no CatalogoAlarme
+    # Ex FusionSolar: "2032" (alarmId); ex Hoymiles: código próprio
+    id_tipo_alarme_provedor: str = ''
     payload_bruto: dict = field(default_factory=dict)
 
 
@@ -78,6 +81,9 @@ class CapacidadesProvedor:
     # Rate limit: máximo de requisições por janela de segundos
     limite_requisicoes: int = 5
     janela_segundos: int = 10
+    # Intervalo mínimo entre coletas bem-sucedidas (0 = sem restrição).
+    # Usado para evitar cascade de rate limit em provedores com janelas rígidas (ex: FusionSolar).
+    min_intervalo_coleta_segundos: int = 0
 
 
 # ── Contrato ABC ───────────────────────────────────────────────────────────────

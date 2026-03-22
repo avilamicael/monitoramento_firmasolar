@@ -27,7 +27,9 @@ class ConfiguracaoNotificacao(models.Model):
     )
     # Quais níveis disparam notificação neste canal
     notificar_critico = models.BooleanField(default=True, verbose_name='Notificar alertas críticos')
+    notificar_importante = models.BooleanField(default=True, verbose_name='Notificar alertas importantes')
     notificar_aviso = models.BooleanField(default=False, verbose_name='Notificar alertas de aviso')
+    notificar_info = models.BooleanField(default=False, verbose_name='Notificar alertas informativos')
     atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:

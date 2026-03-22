@@ -13,18 +13,20 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 300
+              from: 600
               to: 0
-            datasourceUid: prometheus-firmasolar
+            datasourceUid: postgres-firmasolar
             model:
-              expr: solar_usina_status == 2
-              instant: true
-              intervalMs: 1000
-              maxDataPoints: 43200
+              rawSql: >
+                SELECT COUNT(*) AS value
+                FROM usinas_usina u
+                JOIN usinas_snapshotusina s ON s.id = u.ultimo_snapshot_id
+                WHERE u.ativo = true AND s.status = 'offline'
+              format: table
               refId: A
           - refId: C
             relativeTimeRange:
-              from: 300
+              from: 600
               to: 0
             datasourceUid: "__expr__"
             model:
@@ -51,8 +53,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Usina offline: {{ $labels.nome_usina }}"
-          description: "A usina {{ $labels.nome_usina }} ({{ $labels.provedor }}) está offline há mais de 5 minutos."
+          summary: "Usinas offline detectadas"
+          description: "Há usinas com status offline no último snapshot."
 
       - uid: alerta-sem-geracao
         title: "Usina sem Geração durante o Dia"
@@ -62,12 +64,17 @@ groups:
             relativeTimeRange:
               from: 1800
               to: 0
-            datasourceUid: prometheus-firmasolar
+            datasourceUid: postgres-firmasolar
             model:
-              expr: "solar_usina_potencia_kw == 0 and hour() >= 9 and hour() <= 17"
-              instant: true
-              intervalMs: 1000
-              maxDataPoints: 43200
+              rawSql: >
+                SELECT COUNT(*) AS value
+                FROM usinas_usina u
+                JOIN usinas_snapshotusina s ON s.id = u.ultimo_snapshot_id
+                WHERE u.ativo = true
+                  AND s.status = 'normal'
+                  AND COALESCE(s.potencia_kw, 0) = 0
+                  AND EXTRACT(HOUR FROM NOW() AT TIME ZONE 'America/Sao_Paulo') BETWEEN 9 AND 17
+              format: table
               refId: A
           - refId: C
             relativeTimeRange:
@@ -98,5 +105,53 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Sem geração: {{ $labels.nome_usina }}"
-          description: "A usina {{ $labels.nome_usina }} não está gerando energia das 9h às 17h."
+          summary: "Usinas sem geração no horário solar"
+          description: "Há usinas com status normal mas sem geração entre 9h e 17h."
+
+      - uid: alerta-credencial-com-problema
+        title: "Credencial de Provider com Problema"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: postgres-firmasolar
+            model:
+              rawSql: >
+                SELECT COUNT(*) AS value
+                FROM provedores_credencialprovedor
+                WHERE precisa_atencao = true AND ativo = true
+              format: table
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              refId: C
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              expression: A
+        noDataState: OK
+        execErrState: Alerting
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Credencial de provider precisa de atenção"
+          description: "Uma ou mais credenciais de provedor estão marcadas com erro de autenticação."

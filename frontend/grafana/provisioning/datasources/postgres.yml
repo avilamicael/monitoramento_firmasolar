@@ -1,0 +1,21 @@
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL
+    uid: postgres-firmasolar
+    type: postgres
+    access: proxy
+    url: ${DB_HOST}:${DB_PORT}
+    database: ${DB_NOME}
+    user: ${DB_USUARIO}
+    secureJsonData:
+      password: ${DB_SENHA}
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 10
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      postgresVersion: 1600
+      timescaledb: false
+    isDefault: true
+    editable: false

@@ -58,11 +58,17 @@ class ServicoNotificacao:
             logger.debug('Nenhum canal de notificação ativo — ignorando alerta %s', alerta.id)
             return
 
+        _NIVEL_FLAG = {
+            'critico':    'notificar_critico',
+            'importante': 'notificar_importante',
+            'aviso':      'notificar_aviso',
+            'info':       'notificar_info',
+        }
+
         for config in configuracoes:
             # Verificar se este canal notifica este nível de alerta
-            if alerta.nivel == 'critico' and not config.notificar_critico:
-                continue
-            if alerta.nivel == 'aviso' and not config.notificar_aviso:
+            flag = _NIVEL_FLAG.get(alerta.nivel)
+            if flag and not getattr(config, flag, False):
                 continue
 
             destinatarios = config.lista_destinatarios()

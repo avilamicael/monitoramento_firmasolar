@@ -12,12 +12,12 @@ Todas as operações são chamadas dentro de uma transação atômica pela task 
 import logging
 from datetime import datetime, timezone
 
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone as dj_timezone
 
 from provedores.base import DadosUsina, DadosInversor, DadosAlerta
 from usinas.models import Usina, SnapshotUsina, Inversor, SnapshotInversor
-from alertas.models import Alerta
+from alertas.models import Alerta, CatalogoAlarme, RegraSupressao
 
 logger = logging.getLogger(__name__)
 
@@ -125,8 +125,10 @@ class ServicoIngestao:
         """
         Sincroniza os alertas do provedor com o banco de dados:
 
+        - Consulta o CatalogoAlarme para obter nível efetivo e verificar supressão
+        - Alarmes suprimidos (globalmente ou via RegraSupressao) são ignorados
         - Novos alertas → cria + dispara notificação
-        - Alertas existentes → atualiza nível/sugestão; detecta escalonamento (aviso→crítico)
+        - Alertas existentes → detecta escalonamento; atualiza nível/sugestão
         - Alertas que sumiram do provedor → marca como 'resolvido'
         - Alertas 'em_atendimento' não têm o estado sobrescrito automaticamente
 
@@ -137,6 +139,12 @@ class ServicoIngestao:
         from notificacoes.servico import ServicoNotificacao
         servico_notificacao = ServicoNotificacao()
 
+        if not usinas_por_id_provedor:
+            return
+
+        # Identifica o provedor a partir da primeira usina (todas são do mesmo ciclo)
+        provedor = next(iter(usinas_por_id_provedor.values())).provedor
+
         ids_ativos_provedor: set[str] = set()
 
         for dados in alertas:
@@ -146,39 +154,84 @@ class ServicoIngestao:
             if not dados.id_alerta_provedor:
                 continue
 
+            # Lookup ou auto-criação no catálogo (apenas se o provedor envia um ID de tipo)
+            catalogo = None
+            nivel_efetivo = dados.nivel
+            if dados.id_tipo_alarme_provedor:
+                catalogo, criado_catalogo = CatalogoAlarme.objects.get_or_create(
+                    provedor=provedor,
+                    id_alarme_provedor=dados.id_tipo_alarme_provedor,
+                    defaults={
+                        'nome_pt': dados.mensagem[:200],
+                        'nome_original': dados.mensagem[:200],
+                        'nivel_padrao': dados.nivel,
+                        'criado_auto': True,
+                    },
+                )
+                if criado_catalogo:
+                    logger.info(
+                        '%s: novo tipo de alarme auto-cadastrado no catálogo: %s — "%s"',
+                        provedor, dados.id_tipo_alarme_provedor, dados.mensagem[:80],
+                    )
+
+                # Supressão global no catálogo
+                if catalogo.suprimido:
+                    continue
+
+                # Supressão por regra ativa (escopo usina ou todas)
+                if RegraSupressao.objects.filter(
+                    catalogo=catalogo,
+                    escopo='todas',
+                ).filter(
+                    models.Q(ativo_ate__isnull=True) | models.Q(ativo_ate__gt=dj_timezone.now())
+                ).exists():
+                    continue
+
+                if RegraSupressao.objects.filter(
+                    catalogo=catalogo,
+                    escopo='usina',
+                    usina=usina,
+                ).filter(
+                    models.Q(ativo_ate__isnull=True) | models.Q(ativo_ate__gt=dj_timezone.now())
+                ).exists():
+                    continue
+
+                # Nível efetivo: usa o do catálogo se foi sobrescrito pelo operador
+                if catalogo.nivel_sobrescrito:
+                    nivel_efetivo = catalogo.nivel_padrao
+
             ids_ativos_provedor.add(dados.id_alerta_provedor)
 
             alerta, criado = Alerta.objects.get_or_create(
                 usina=usina,
                 id_alerta_provedor=dados.id_alerta_provedor,
                 defaults={
+                    'catalogo_alarme': catalogo,
                     'equipamento_sn': dados.equipamento_sn,
                     'mensagem': dados.mensagem,
-                    'nivel': dados.nivel,
+                    'nivel': nivel_efetivo,
                     'inicio': dados.inicio,
                     'estado': 'ativo',
-                    'sugestao': dados.sugestao,
+                    'sugestao': dados.sugestao or (catalogo.sugestao if catalogo else ''),
                     'payload_bruto': dados.payload_bruto,
                 },
             )
 
             if criado:
-                if not alerta.notificacao_enviada:
-                    servico_notificacao.notificar_novo_alerta(alerta)
-                    Alerta.objects.filter(pk=alerta.pk).update(notificacao_enviada=True)
+                servico_notificacao.notificar_novo_alerta(alerta)
+                Alerta.objects.filter(pk=alerta.pk).update(notificacao_enviada=True)
             else:
-                # Verificar escalonamento: aviso → crítico
-                era_aviso = alerta.nivel == 'aviso'
-                agora_critico = dados.nivel == 'critico'
-                if era_aviso and agora_critico:
+                # Detectar escalonamento (qualquer subida de nível, não só aviso→crítico)
+                if alerta.nivel_escalou_para(nivel_efetivo):
                     servico_notificacao.notificar_alerta_escalado(alerta)
 
-                # Atualizar campos que podem mudar
                 campos_update = {
-                    'nivel': dados.nivel,
-                    'sugestao': dados.sugestao,
+                    'nivel': nivel_efetivo,
+                    'sugestao': dados.sugestao or (catalogo.sugestao if catalogo else ''),
                     'payload_bruto': dados.payload_bruto,
                 }
+                if catalogo and alerta.catalogo_alarme_id is None:
+                    campos_update['catalogo_alarme'] = catalogo
                 # Reabrir se tinha sido resolvido e voltou
                 if alerta.estado == 'resolvido':
                     campos_update['estado'] = 'ativo'
@@ -187,17 +240,16 @@ class ServicoIngestao:
                 Alerta.objects.filter(pk=alerta.pk).update(**campos_update)
 
         # Resolver alertas que sumiram do provedor neste ciclo
-        if usinas_por_id_provedor:
-            ids_usinas = [u.id for u in usinas_por_id_provedor.values()]
-            resolvidos = Alerta.objects.filter(
-                usina__in=ids_usinas,
-                estado='ativo',
-            ).exclude(
-                id_alerta_provedor__in=ids_ativos_provedor,
-            )
-            qtd_resolvidos = resolvidos.update(
-                estado='resolvido',
-                fim=dj_timezone.now(),
-            )
-            if qtd_resolvidos:
-                logger.info('Alertas resolvidos automaticamente: %d', qtd_resolvidos)
+        ids_usinas = [u.id for u in usinas_por_id_provedor.values()]
+        resolvidos = Alerta.objects.filter(
+            usina__in=ids_usinas,
+            estado='ativo',
+        ).exclude(
+            id_alerta_provedor__in=ids_ativos_provedor,
+        )
+        qtd_resolvidos = resolvidos.update(
+            estado='resolvido',
+            fim=dj_timezone.now(),
+        )
+        if qtd_resolvidos:
+            logger.info('Alertas resolvidos automaticamente: %d', qtd_resolvidos)

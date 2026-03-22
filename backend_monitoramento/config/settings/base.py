@@ -22,7 +22,6 @@ APPS_LOCAIS = [
     'usinas',
     'alertas',
     'coleta',
-    'metricas',
     'notificacoes',
 ]
 
@@ -95,11 +94,7 @@ REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 # Gerar: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 CHAVE_CRIPTOGRAFIA = os.environ.get('CHAVE_CRIPTOGRAFIA', '')
 
-# ── Métricas Prometheus ────────────────────────────────────────────────────────
-# Token de acesso ao endpoint /metricas/ — configurado também no prometheus.yml
-METRICAS_TOKEN = os.environ.get('METRICAS_TOKEN', '')
-
-# ── Notificações — Secrets do servidor (destinatários ficam no admin do Django) ─
+#── Notificações — Secrets do servidor (destinatários ficam no admin do Django) ─
 EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORTA', '587'))
 EMAIL_HOST_USER = os.environ.get('EMAIL_USUARIO', '')
