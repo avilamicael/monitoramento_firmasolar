@@ -1,0 +1,8 @@
+django==5.1.*
+psycopg2-binary==2.9.*
+celery==5.4.*
+redis==5.2.*
+cryptography==43.*
+requests==2.32.*
+prometheus-client==0.21.*
+python-dotenv==1.0.*
