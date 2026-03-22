@@ -52,9 +52,10 @@ class FusionSolarAdaptador(AdaptadorProvedor):
     @property
     def capacidades(self) -> CapacidadesProvedor:
         return CapacidadesProvedor(
-            suporta_inversores=False,   # conta sem permissão p/ dados de inversores (erro 407)
+            suporta_inversores=True,
             suporta_alertas=True,
             alertas_por_conta=True,
+            # FusionSolar tem limite rígido de frequência — 1 req a cada 5s por usina
             limite_requisicoes=1,
             janela_segundos=5,
         )
@@ -118,17 +119,34 @@ class FusionSolarAdaptador(AdaptadorProvedor):
     def _normalizar_inversor(self, r: dict, id_usina: str) -> DadosInversor:
         kpi = r.get('_kpi') or {}
         dev_id = str(r.get('id', ''))
+
+        # Strings MPPT: campos mppt_N_cap (energia acumulada por string)
+        strings_mppt = {
+            k: float(v)
+            for k, v in kpi.items()
+            if k.startswith('mppt_') and k.endswith('_cap') and v
+        }
+
+        # run_state=1 = ligado; qualquer outro = offline
+        run_state = kpi.get('run_state')
+        if run_state is not None:
+            estado = 'normal' if int(run_state) == 1 else 'offline'
+        else:
+            estado = 'normal' if r.get('devStatus') == 1 else 'offline'
+
         return DadosInversor(
             id_inversor_provedor=dev_id,
             id_usina_provedor=id_usina,
             numero_serie=r.get('esnCode') or r.get('devSn') or dev_id,
-            modelo=r.get('invType') or '',
-            estado='normal' if r.get('devStatus') == 1 else 'offline',
+            modelo=r.get('invType') or r.get('devName') or '',
+            estado=estado,
             pac_kw=_para_float(kpi.get('active_power')),
             energia_hoje_kwh=_para_float(kpi.get('day_cap')),
-            energia_total_kwh=_para_float(kpi.get('mppt_total_cap')),
+            # total_cap = energia total acumulada (campo correto para devTypeId=38)
+            # mppt_total_cap não existe neste tipo de dispositivo
+            energia_total_kwh=_para_float(kpi.get('total_cap') or kpi.get('mppt_total_cap')),
             soc_bateria=None,
-            strings_mppt={},
+            strings_mppt=strings_mppt,
             data_medicao=datetime.now(timezone.utc),
             payload_bruto=r,
         )

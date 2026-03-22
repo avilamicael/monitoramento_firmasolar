@@ -22,12 +22,15 @@ def _post(path: str, body: dict, sessao: requests.Session, usuario: str, system_
     Executa uma requisição POST autenticada.
     Faz re-login automático se a sessão expirar.
     """
+    inicio = time.time()
     try:
         resp = sessao.post(f'{BASE_URL}/{path.lstrip("/")}', json=body, timeout=20)
     except requests.RequestException as exc:
+        logger.warning('FusionSolar: erro de rede em %s — %s', path, exc)
         raise ProvedorErro(f'FusionSolar: erro de rede em {path}: {exc}') from exc
 
     if resp.status_code == 429:
+        logger.warning('FusionSolar: rate limit HTTP (429) em %s', path)
         raise ProvedorErroRateLimit('FusionSolar: rate limit HTTP (429)')
 
     if resp.status_code == 401:
@@ -71,6 +74,8 @@ def _post(path: str, body: dict, sessao: requests.Session, usuario: str, system_
 
         raise ProvedorErro(f'FusionSolar: erro da API em {path} — {msg}')
 
+    duracao_ms = int((time.time() - inicio) * 1000)
+    logger.debug('FusionSolar: POST %s → HTTP %d em %dms', path, resp.status_code, duracao_ms)
     return dados
 
 
@@ -106,32 +111,43 @@ def listar_usinas(sessao: requests.Session, usuario: str, system_code: str) -> l
 def listar_inversores(id_usina: str, sessao: requests.Session, usuario: str, system_code: str) -> list[dict]:
     """
     Retorna os inversores de uma usina com seus KPIs em tempo real.
-    Pode retornar lista vazia se a conta não tiver permissão (erro 407).
+
+    Tipos de inversor reconhecidos na API FusionSolar thirdData:
+      devTypeId=1  — String Inverter (trifásico, instalações comerciais/utility)
+      devTypeId=38 — SUN2000 residencial / SmartLogger com inversor integrado
     """
+    # Tipos que correspondem a inversores na API thirdData
+    TIPOS_INVERSOR = {1, 38}
+
     try:
         dados = _post('/getDevList', {'stationCodes': id_usina}, sessao, usuario, system_code)
     except ProvedorErroRateLimit:
-        logger.warning('FusionSolar: sem permissão para inversores (407) em %s', id_usina)
+        logger.warning('FusionSolar: rate limit ao buscar inversores em %s — ignorando', id_usina)
         return []
 
     dispositivos = dados.get('data') or []
-    inversores = [d for d in dispositivos if d.get('devTypeId') == 1]
+    inversores = [d for d in dispositivos if d.get('devTypeId') in TIPOS_INVERSOR]
 
     if not inversores:
         return []
 
-    ids_inversores = [str(d.get('id')) for d in inversores if d.get('id')]
-    kpi_por_id = {}
-    if ids_inversores:
+    # Agrupa por devTypeId para chamar getDevRealKpi com o tipo correto
+    por_tipo: dict[int, list[dict]] = {}
+    for d in inversores:
+        por_tipo.setdefault(d.get('devTypeId'), []).append(d)
+
+    kpi_por_id: dict[str, dict] = {}
+    for dev_type, devs in por_tipo.items():
+        ids = [str(d.get('id')) for d in devs if d.get('id')]
+        if not ids:
+            continue
         try:
             kpi_resp = _post('/getDevRealKpi',
-                             {'devIds': ','.join(ids_inversores), 'devTypeId': 1},
+                             {'devIds': ','.join(ids), 'devTypeId': dev_type},
                              sessao, usuario, system_code)
-            kpi_por_id = {
-                str(item.get('devId')): item.get('dataItemMap', {})
-                for item in (kpi_resp.get('data') or [])
-                if item.get('devId')
-            }
+            for item in (kpi_resp.get('data') or []):
+                if item.get('devId'):
+                    kpi_por_id[str(item['devId'])] = item.get('dataItemMap', {})
         except ProvedorErro:
             pass
 

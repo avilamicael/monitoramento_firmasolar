@@ -46,9 +46,15 @@ def metricas_view(request):
 
 def _gerar_metricas() -> bytes:
     """Gera todas as métricas Prometheus a partir do banco de dados atual."""
-    from usinas.models import Usina
+    from datetime import timedelta
+
+    from django.db.models import Count, Max, Q
+    from django.utils import timezone
+
     from alertas.models import Alerta
     from coleta.models import LogColeta
+    from provedores.models import CredencialProvedor
+    from usinas.models import Usina
 
     registry = CollectorRegistry()
 
@@ -78,6 +84,15 @@ def _gerar_metricas() -> bytes:
     g_ultima_coleta = Gauge('solar_ultima_coleta_timestamp',
                             'Unix timestamp da última coleta bem-sucedida',
                             ['provedor'], registry=registry)
+
+    # ── Saúde do sistema ─────────────────────────────────────────────────────
+    g_coleta_24h = Gauge('solar_coleta_24h_total',
+                         'Número de coletas nas últimas 24h por provedor e status',
+                         ['provedor', 'status'], registry=registry)
+
+    g_credencial_atencao = Gauge('solar_credencial_precisa_atencao',
+                                 'Quantidade de credenciais ativas que requerem atenção manual',
+                                 ['provedor'], registry=registry)
 
     # ── Preencher dados ──────────────────────────────────────────────────────
     _STATUS_VALOR = {'normal': 0, 'aviso': 1, 'offline': 2, 'construcao': 3}
@@ -119,7 +134,6 @@ def _gerar_metricas() -> bytes:
         g_alerta.labels(*lbl, alerta.mensagem[:100], alerta.nivel).set(1)
 
     # Última coleta bem-sucedida por provedor
-    from django.db.models import Max
     logs = (LogColeta.objects
             .filter(status='sucesso')
             .values('credencial__provedor')
@@ -129,5 +143,22 @@ def _gerar_metricas() -> bytes:
         ultima = log['ultima']
         if ultima:
             g_ultima_coleta.labels(provedor).set(ultima.timestamp())
+
+    # Coletas nas últimas 24h por provedor e status
+    corte_24h = timezone.now() - timedelta(hours=24)
+    coletas_24h = (LogColeta.objects
+                   .filter(iniciado_em__gte=corte_24h)
+                   .values('credencial__provedor', 'status')
+                   .annotate(total=Count('id')))
+    for item in coletas_24h:
+        g_coleta_24h.labels(item['credencial__provedor'], item['status']).set(item['total'])
+
+    # Credenciais com necessidade de atenção por provedor
+    atencao_por_provedor = (CredencialProvedor.objects
+                            .filter(ativo=True)
+                            .values('provedor')
+                            .annotate(precisa=Count('id', filter=Q(precisa_atencao=True))))
+    for item in atencao_por_provedor:
+        g_credencial_atencao.labels(item['provedor']).set(item['precisa'])
 
     return generate_latest(registry)

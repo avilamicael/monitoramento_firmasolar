@@ -17,7 +17,7 @@ groups:
               to: 0
             datasourceUid: prometheus-firmasolar
             model:
-              expr: solar_station_status == 3
+              expr: solar_usina_status == 2
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -51,8 +51,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Usina offline: {{ $labels.station_name }}"
-          description: "A usina {{ $labels.station_name }} ({{ $labels.provider }}) está offline há mais de 5 minutos."
+          summary: "Usina offline: {{ $labels.nome_usina }}"
+          description: "A usina {{ $labels.nome_usina }} ({{ $labels.provedor }}) está offline há mais de 5 minutos."
 
       - uid: alerta-sem-geracao
         title: "Usina sem Geração durante o Dia"
@@ -64,7 +64,7 @@ groups:
               to: 0
             datasourceUid: prometheus-firmasolar
             model:
-              expr: "solar_station_power_kw == 0 and hour() >= 9 and hour() <= 17"
+              expr: "solar_usina_potencia_kw == 0 and hour() >= 9 and hour() <= 17"
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -98,5 +98,5 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Sem geração: {{ $labels.station_name }}"
-          description: "A usina {{ $labels.station_name }} não está gerando energia das 9h às 17h."
+          summary: "Sem geração: {{ $labels.nome_usina }}"
+          description: "A usina {{ $labels.nome_usina }} não está gerando energia das 9h às 17h."

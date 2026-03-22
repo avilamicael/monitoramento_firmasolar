@@ -1,28 +1,54 @@
-from django.contrib import admin
-from .models import CredencialProvedor, CacheTokenProvedor
-from .cripto import criptografar_credenciais, descriptografar_credenciais
 import json
+
+from django import forms
+from django.contrib import admin
+
+from .cripto import criptografar_credenciais, descriptografar_credenciais
+from .models import CacheTokenProvedor, CredencialProvedor
+
+
+class CredencialProvedorForm(forms.ModelForm):
+    """
+    Form customizado que expõe um campo de texto legível para edição das credenciais.
+    O campo credenciais_json é convertido para/de credenciais_enc (Fernet) no save().
+    """
+    credenciais_json = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 6, 'cols': 60}),
+        required=False,
+        label='Credenciais (JSON)',
+        help_text='Cole as credenciais como JSON. Ex: {"api_key": "...", "app_secret": "..."}',
+    )
+
+    class Meta:
+        model = CredencialProvedor
+        exclude = ['credenciais_enc']
+
+    def clean_credenciais_json(self):
+        valor = self.cleaned_data.get('credenciais_json', '').strip()
+        if valor:
+            try:
+                json.loads(valor)
+            except json.JSONDecodeError as exc:
+                raise forms.ValidationError(f'JSON inválido: {exc}')
+        return valor
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        json_raw = self.cleaned_data.get('credenciais_json', '').strip()
+        if json_raw:
+            instance.credenciais_enc = criptografar_credenciais(json.loads(json_raw))
+        if commit:
+            instance.save()
+        return instance
 
 
 @admin.register(CredencialProvedor)
 class CredencialProvedorAdmin(admin.ModelAdmin):
+    form = CredencialProvedorForm
     list_display = ['provedor', 'ativo', 'precisa_atencao', 'atualizado_em']
     list_filter = ['provedor', 'ativo', 'precisa_atencao']
     readonly_fields = ['criado_em', 'atualizado_em', 'credenciais_preview']
-
     fields = ['provedor', 'ativo', 'precisa_atencao', 'credenciais_json', 'credenciais_preview', 'criado_em', 'atualizado_em']
-
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        # Campo temporário para edição do JSON descriptografado
-        from django import forms
-        form.base_fields['credenciais_json'] = forms.CharField(
-            widget=forms.Textarea(attrs={'rows': 6, 'cols': 60}),
-            required=False,
-            label='Credenciais (JSON)',
-            help_text='Cole as credenciais como JSON. Ex: {"api_key": "...", "app_secret": "..."}',
-        )
-        return form
 
     def credenciais_preview(self, obj):
         """Mostra as chaves do JSON (sem valores) para confirmação."""
@@ -35,17 +61,6 @@ class CredencialProvedorAdmin(admin.ModelAdmin):
         except Exception:
             return '(erro ao descriptografar)'
     credenciais_preview.short_description = 'Credenciais salvas'
-
-    def save_model(self, request, obj, form, change):
-        json_raw = form.cleaned_data.get('credenciais_json', '').strip()
-        if json_raw:
-            try:
-                dados = json.loads(json_raw)
-                obj.credenciais_enc = criptografar_credenciais(dados)
-            except json.JSONDecodeError as exc:
-                from django.core.exceptions import ValidationError
-                raise ValidationError(f'JSON inválido: {exc}')
-        super().save_model(request, obj, form, change)
 
 
 @admin.register(CacheTokenProvedor)

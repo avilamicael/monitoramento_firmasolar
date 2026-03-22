@@ -1,2 +1,5 @@
 # Instruções ao Claude Code — não versionar em repos públicos
 CLAUDE.md
+
+# Dados persistidos localmente (banco, cache, métricas)
+data/

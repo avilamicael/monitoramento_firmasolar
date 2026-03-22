@@ -2,7 +2,7 @@
   "title": "Firma Solar — Monitoramento",
   "uid": "firma-solar-main",
   "schemaVersion": 38,
-  "version": 2,
+  "version": 3,
   "refresh": "1m",
   "time": { "from": "now-24h", "to": "now" },
   "panels": [
@@ -31,8 +31,10 @@
       },
       "targets": [
         {
-          "expr": "count(solar_station_status == 3) or vector(0)",
-          "legendFormat": "Offline"
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "count(solar_usina_status == 2) or vector(0)",
+          "legendFormat": "Offline",
+          "refId": "A"
         }
       ]
     },
@@ -62,8 +64,10 @@
       },
       "targets": [
         {
-          "expr": "count(solar_station_alarm_count > 0) or vector(0)",
-          "legendFormat": "Com alertas"
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "count(solar_usina_qtd_alertas > 0) or vector(0)",
+          "legendFormat": "Com alertas",
+          "refId": "A"
         }
       ]
     },
@@ -92,7 +96,12 @@
         }
       },
       "targets": [
-        { "expr": "sum(solar_station_power_kw)", "legendFormat": "kW" }
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "sum(solar_usina_potencia_kw)",
+          "legendFormat": "kW",
+          "refId": "A"
+        }
       ]
     },
     {
@@ -114,7 +123,12 @@
         }
       },
       "targets": [
-        { "expr": "sum(solar_station_energy_today_kwh) / 1000", "legendFormat": "MWh" }
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "sum(solar_usina_energia_hoje_kwh) / 1000",
+          "legendFormat": "MWh",
+          "refId": "A"
+        }
       ]
     },
 
@@ -131,28 +145,28 @@
         "defaults": { "custom": { "align": "left" } },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "station_name" },
+            "matcher": { "id": "byName", "options": "nome_usina" },
             "properties": [
               { "id": "displayName", "value": "Usina / Cliente" },
               { "id": "custom.width", "value": 230 }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "alarm_msg" },
+            "matcher": { "id": "byName", "options": "mensagem" },
             "properties": [
               { "id": "displayName", "value": "Mensagem de Erro" },
               { "id": "custom.width", "value": 280 }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "alarm_level" },
+            "matcher": { "id": "byName", "options": "nivel" },
             "properties": [
               { "id": "displayName", "value": "Nível" },
               {
                 "id": "mappings",
                 "value": [
-                  { "type": "value", "options": { "critical": { "text": "🔴 Crítico", "color": "red", "index": 0 } } },
-                  { "type": "value", "options": { "warning": { "text": "⚠️ Aviso", "color": "orange", "index": 1 } } }
+                  { "type": "value", "options": { "critico": { "text": "🔴 Crítico", "color": "red", "index": 0 } } },
+                  { "type": "value", "options": { "aviso": { "text": "⚠️ Aviso", "color": "orange", "index": 1 } } }
                 ]
               },
               { "id": "custom.displayMode", "value": "color-background" },
@@ -160,7 +174,7 @@
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "provider" },
+            "matcher": { "id": "byName", "options": "provedor" },
             "properties": [
               { "id": "displayName", "value": "Provider" },
               { "id": "custom.width", "value": 110 }
@@ -173,21 +187,32 @@
         ]
       },
       "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
         {
-          "id": "filterFieldsByName",
+          "id": "organize",
           "options": {
-            "include": {
-              "names": ["station_name", "alarm_msg", "alarm_level", "provider"]
+            "includeByName": {
+              "nome_usina": true,
+              "mensagem": true,
+              "nivel": true,
+              "provedor": true
+            },
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "id_usina": true
             }
           }
         }
       ],
       "targets": [
         {
-          "expr": "solar_station_active_alert == 1",
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "solar_usina_alerta_ativo == 1",
           "legendFormat": "",
           "instant": true,
-          "format": "table"
+          "format": "table",
+          "refId": "A"
         }
       ]
     },
@@ -218,7 +243,12 @@
         }
       },
       "targets": [
-        { "expr": "sort_desc(solar_station_power_kw)", "legendFormat": "{{station_name}}" }
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "sort_desc(solar_usina_potencia_kw)",
+          "legendFormat": "{{nome_usina}}",
+          "refId": "A"
+        }
       ]
     },
 
@@ -237,7 +267,12 @@
         "tooltip": { "mode": "multi" }
       },
       "targets": [
-        { "expr": "sum(solar_station_power_kw)", "legendFormat": "Frota total (kW)" }
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "sum(solar_usina_potencia_kw)",
+          "legendFormat": "Frota total (kW)",
+          "refId": "A"
+        }
       ]
     },
 
@@ -257,13 +292,35 @@
         "overrides": [
           { "matcher": { "id": "byName", "options": "Normal" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
           { "matcher": { "id": "byName", "options": "Offline" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
-          { "matcher": { "id": "byName", "options": "Alerta" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] }
+          { "matcher": { "id": "byName", "options": "Alerta" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] },
+          { "matcher": { "id": "byName", "options": "Construção" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "gray" } }] }
         ]
       },
       "targets": [
-        { "expr": "count(solar_station_status == 1) or vector(0)", "legendFormat": "Normal" },
-        { "expr": "count(solar_station_status == 2) or vector(0)", "legendFormat": "Alerta" },
-        { "expr": "count(solar_station_status == 3) or vector(0)", "legendFormat": "Offline" }
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "count(solar_usina_status == 0) or vector(0)",
+          "legendFormat": "Normal",
+          "refId": "A"
+        },
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "count(solar_usina_status == 1) or vector(0)",
+          "legendFormat": "Alerta",
+          "refId": "B"
+        },
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "count(solar_usina_status == 2) or vector(0)",
+          "legendFormat": "Offline",
+          "refId": "C"
+        },
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "count(solar_usina_status == 3) or vector(0)",
+          "legendFormat": "Construção",
+          "refId": "D"
+        }
       ]
     },
 
@@ -279,23 +336,24 @@
         "defaults": { "custom": { "align": "left" } },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Value #solar_station_status" },
+            "matcher": { "id": "byName", "options": "Value #solar_usina_status" },
             "properties": [
               { "id": "displayName", "value": "Status" },
               {
                 "id": "mappings",
                 "value": [
-                  { "type": "value", "options": { "1": { "text": "✅ Normal", "color": "green", "index": 0 } } },
-                  { "type": "value", "options": { "2": { "text": "⚠️ Alerta", "color": "orange", "index": 1 } } },
-                  { "type": "value", "options": { "3": { "text": "🔴 Offline", "color": "red", "index": 2 } } }
+                  { "type": "value", "options": { "0": { "text": "✅ Normal", "color": "green", "index": 0 } } },
+                  { "type": "value", "options": { "1": { "text": "⚠️ Alerta", "color": "orange", "index": 1 } } },
+                  { "type": "value", "options": { "2": { "text": "🔴 Offline", "color": "red", "index": 2 } } },
+                  { "type": "value", "options": { "3": { "text": "🏗️ Construção", "color": "gray", "index": 3 } } }
                 ]
               },
               { "id": "custom.displayMode", "value": "color-background" },
-              { "id": "custom.width", "value": 120 }
+              { "id": "custom.width", "value": 140 }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Value #solar_station_power_kw" },
+            "matcher": { "id": "byName", "options": "Value #solar_usina_potencia_kw" },
             "properties": [
               { "id": "displayName", "value": "Potência (kW)" },
               { "id": "unit", "value": "kwatt" },
@@ -304,7 +362,7 @@
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Value #solar_station_energy_today_kwh" },
+            "matcher": { "id": "byName", "options": "Value #solar_usina_energia_hoje_kwh" },
             "properties": [
               { "id": "displayName", "value": "Hoje (kWh)" },
               { "id": "unit", "value": "kwatth" },
@@ -313,14 +371,14 @@
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "station_name" },
+            "matcher": { "id": "byName", "options": "nome_usina" },
             "properties": [
               { "id": "displayName", "value": "Usina" },
               { "id": "custom.width", "value": 250 }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "provider" },
+            "matcher": { "id": "byName", "options": "provedor" },
             "properties": [
               { "id": "displayName", "value": "Provider" },
               { "id": "custom.width", "value": 110 }
@@ -329,19 +387,49 @@
         ]
       },
       "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
         {
-          "id": "filterFieldsByName",
+          "id": "organize",
           "options": {
-            "include": {
-              "names": ["station_name", "provider", "Value #solar_station_status", "Value #solar_station_power_kw", "Value #solar_station_energy_today_kwh"]
+            "includeByName": {
+              "nome_usina": true,
+              "provedor": true,
+              "Value #solar_usina_status": true,
+              "Value #solar_usina_potencia_kw": true,
+              "Value #solar_usina_energia_hoje_kwh": true
+            },
+            "excludeByName": {
+              "Time": true,
+              "id_usina": true
             }
           }
         }
       ],
       "targets": [
-        { "expr": "solar_station_status", "legendFormat": "", "instant": true, "format": "table" },
-        { "expr": "solar_station_power_kw", "legendFormat": "", "instant": true, "format": "table" },
-        { "expr": "solar_station_energy_today_kwh", "legendFormat": "", "instant": true, "format": "table" }
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "solar_usina_status",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table",
+          "refId": "A"
+        },
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "solar_usina_potencia_kw",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table",
+          "refId": "B"
+        },
+        {
+          "datasource": { "uid": "prometheus-firmasolar" },
+          "expr": "solar_usina_energia_hoje_kwh",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table",
+          "refId": "C"
+        }
       ]
     }
   ]

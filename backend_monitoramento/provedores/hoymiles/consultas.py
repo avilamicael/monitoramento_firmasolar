@@ -18,6 +18,8 @@ BASE_URL = 'https://neapi.hoymiles.com'
 
 def _post(path: str, body: dict, sessao: requests.Session, token: str) -> dict:
     """Executa uma requisição POST autenticada."""
+    import time
+    inicio = time.time()
     try:
         resp = sessao.post(
             f'{BASE_URL}/{path.lstrip("/")}',
@@ -26,25 +28,34 @@ def _post(path: str, body: dict, sessao: requests.Session, token: str) -> dict:
             timeout=20,
         )
     except requests.RequestException as exc:
+        logger.warning('Hoymiles: erro de rede em %s — %s', path, exc)
         raise ProvedorErro(f'Hoymiles: erro de rede em {path}: {exc}') from exc
 
+    duracao_ms = int((time.time() - inicio) * 1000)
+
     if resp.status_code == 429:
+        logger.warning('Hoymiles: rate limit (429) em %s', path)
         raise ProvedorErroRateLimit('Hoymiles: rate limit atingido (429)')
     if resp.status_code == 401:
+        logger.error('Hoymiles: token inválido (401) em %s', path)
         raise ProvedorErroAuth('Hoymiles: token inválido (401)')
 
     try:
         dados = resp.json()
     except Exception as exc:
+        logger.error('Hoymiles: resposta inválida de %s — %s', path, resp.text[:200])
         raise ProvedorErro(f'Hoymiles: resposta inválida de {path}: {resp.text[:200]}') from exc
 
     status = str(dados.get('status', ''))
     if status not in ('0', '200', ''):
         msg = dados.get('message') or str(dados)
         if 'auth' in msg.lower() or 'token' in msg.lower() or status in ('401', '403'):
+            logger.error('Hoymiles: erro de autenticação em %s — %s', path, msg)
             raise ProvedorErroAuth(f'Hoymiles: erro de autenticação — {msg}')
+        logger.warning('Hoymiles: erro da API em %s — %s', path, msg)
         raise ProvedorErro(f'Hoymiles: erro da API em {path} — {msg}')
 
+    logger.debug('Hoymiles: POST %s → HTTP %d em %dms', path, resp.status_code, duracao_ms)
     return dados
 
 
