@@ -1,0 +1,348 @@
+{
+  "title": "Firma Solar — Monitoramento",
+  "uid": "firma-solar-main",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 10,
+      "title": "🚨 USINAS OFFLINE",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 48 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "count(solar_station_status == 3) or vector(0)",
+          "legendFormat": "Offline"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "⚠️ COM ALERTAS ATIVOS",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 48 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "count(solar_station_alarm_count > 0) or vector(0)",
+          "legendFormat": "Com alertas"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "title": "⚡ Potência Total da Frota",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatt",
+          "noValue": "0",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "yellow", "value": 1 },
+              { "color": "green", "value": 10 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        { "expr": "sum(solar_station_power_kw)", "legendFormat": "kW" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "☀️ Energia Hoje (Total)",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "noValue": "0",
+          "decimals": 1,
+          "color": { "mode": "fixed", "fixedColor": "blue" }
+        }
+      },
+      "targets": [
+        { "expr": "sum(solar_station_energy_today_kwh) / 1000", "legendFormat": "MWh" }
+      ]
+    },
+
+    {
+      "id": 20,
+      "title": "🔴 Usinas com Problema Agora",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 7 },
+      "options": {
+        "sortBy": [{ "displayName": "Nível", "desc": true }],
+        "footer": { "show": false }
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "station_name" },
+            "properties": [
+              { "id": "displayName", "value": "Usina / Cliente" },
+              { "id": "custom.width", "value": 230 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "alarm_msg" },
+            "properties": [
+              { "id": "displayName", "value": "Mensagem de Erro" },
+              { "id": "custom.width", "value": 280 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "alarm_level" },
+            "properties": [
+              { "id": "displayName", "value": "Nível" },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "critical": { "text": "🔴 Crítico", "color": "red", "index": 0 } } },
+                  { "type": "value", "options": { "warning": { "text": "⚠️ Aviso", "color": "orange", "index": 1 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "custom.width", "value": 120 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "provider" },
+            "properties": [
+              { "id": "displayName", "value": "Provider" },
+              { "id": "custom.width", "value": 110 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Value" },
+            "properties": [ { "id": "custom.hidden", "value": true } ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["station_name", "alarm_msg", "alarm_level", "provider"]
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "expr": "solar_station_active_alert == 1",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "title": "Potência por Usina (kW)",
+      "type": "bargauge",
+      "gridPos": { "x": 0, "y": 11, "w": 24, "h": 8 },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "displayMode": "gradient",
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatt",
+          "min": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "green", "value": 2 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        { "expr": "sort_desc(solar_station_power_kw)", "legendFormat": "{{station_name}}" }
+      ]
+    },
+
+    {
+      "id": 6,
+      "title": "Potência Total ao Longo do Tempo",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 19, "w": 16, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatt",
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        { "expr": "sum(solar_station_power_kw)", "legendFormat": "Frota total (kW)" }
+      ]
+    },
+
+    {
+      "id": 30,
+      "title": "Distribuição de Status",
+      "type": "piechart",
+      "gridPos": { "x": 16, "y": 19, "w": 8, "h": 8 },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "value"]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Normal" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byName", "options": "Offline" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
+          { "matcher": { "id": "byName", "options": "Alerta" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] }
+        ]
+      },
+      "targets": [
+        { "expr": "count(solar_station_status == 1) or vector(0)", "legendFormat": "Normal" },
+        { "expr": "count(solar_station_status == 2) or vector(0)", "legendFormat": "Alerta" },
+        { "expr": "count(solar_station_status == 3) or vector(0)", "legendFormat": "Offline" }
+      ]
+    },
+
+    {
+      "id": 7,
+      "title": "Todas as Usinas — Tabela Completa",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 27, "w": 24, "h": 10 },
+      "options": {
+        "sortBy": [{ "displayName": "Potência (kW)", "desc": true }]
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Value #solar_station_status" },
+            "properties": [
+              { "id": "displayName", "value": "Status" },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "1": { "text": "✅ Normal", "color": "green", "index": 0 } } },
+                  { "type": "value", "options": { "2": { "text": "⚠️ Alerta", "color": "orange", "index": 1 } } },
+                  { "type": "value", "options": { "3": { "text": "🔴 Offline", "color": "red", "index": 2 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "custom.width", "value": 120 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Value #solar_station_power_kw" },
+            "properties": [
+              { "id": "displayName", "value": "Potência (kW)" },
+              { "id": "unit", "value": "kwatt" },
+              { "id": "decimals", "value": 2 },
+              { "id": "custom.width", "value": 120 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Value #solar_station_energy_today_kwh" },
+            "properties": [
+              { "id": "displayName", "value": "Hoje (kWh)" },
+              { "id": "unit", "value": "kwatth" },
+              { "id": "decimals", "value": 1 },
+              { "id": "custom.width", "value": 120 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "station_name" },
+            "properties": [
+              { "id": "displayName", "value": "Usina" },
+              { "id": "custom.width", "value": 250 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "provider" },
+            "properties": [
+              { "id": "displayName", "value": "Provider" },
+              { "id": "custom.width", "value": 110 }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["station_name", "provider", "Value #solar_station_status", "Value #solar_station_power_kw", "Value #solar_station_energy_today_kwh"]
+            }
+          }
+        }
+      ],
+      "targets": [
+        { "expr": "solar_station_status", "legendFormat": "", "instant": true, "format": "table" },
+        { "expr": "solar_station_power_kw", "legendFormat": "", "instant": true, "format": "table" },
+        { "expr": "solar_station_energy_today_kwh", "legendFormat": "", "instant": true, "format": "table" }
+      ]
+    }
+  ]
+}

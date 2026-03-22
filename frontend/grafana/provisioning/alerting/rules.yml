@@ -1,0 +1,102 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: firma_solar_alertas
+    folder: Firma Solar
+    interval: 2m
+    rules:
+
+      - uid: alerta-usina-offline
+        title: "Usina Offline"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus-firmasolar
+            model:
+              expr: solar_station_status == 3
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              refId: C
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              expression: A
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Usina offline: {{ $labels.station_name }}"
+          description: "A usina {{ $labels.station_name }} ({{ $labels.provider }}) está offline há mais de 5 minutos."
+
+      - uid: alerta-sem-geracao
+        title: "Usina sem Geração durante o Dia"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            datasourceUid: prometheus-firmasolar
+            model:
+              expr: "solar_station_power_kw == 0 and hour() >= 9 and hour() <= 17"
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              refId: C
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              expression: A
+        noDataState: OK
+        execErrState: Alerting
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sem geração: {{ $labels.station_name }}"
+          description: "A usina {{ $labels.station_name }} não está gerando energia das 9h às 17h."

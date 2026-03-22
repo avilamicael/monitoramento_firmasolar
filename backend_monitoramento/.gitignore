@@ -1,0 +1,36 @@
+# Ambiente
+.env
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Django
+*.log
+db.sqlite3
+staticfiles/
+media/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testes
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Builds
+*.egg-info/
+dist/
+build/
+
+#Claude
+CLAUDE.md
