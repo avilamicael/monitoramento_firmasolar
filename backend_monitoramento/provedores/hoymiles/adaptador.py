@@ -159,6 +159,7 @@ class HoymilesAdaptador(AdaptadorProvedor):
                 if warn_data.get(flag):
                     resultado.append(DadosAlerta(
                         id_alerta_provedor=f'{id_usina}_{flag}',
+                        id_tipo_alarme_provedor=flag,
                         id_usina_provedor=id_usina,
                         mensagem=mensagem,
                         nivel=nivel,

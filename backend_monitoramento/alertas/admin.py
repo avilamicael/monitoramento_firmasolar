@@ -15,7 +15,15 @@ class CatalogoAlarmeAdmin(admin.ModelAdmin):
     readonly_fields = ['criado_em', 'atualizado_em', 'criado_auto']
     fieldsets = [
         (None, {
-            'fields': ['provedor', 'id_alarme_provedor', 'nome_pt', 'nome_original', 'tipo'],
+            'fields': ['provedor', 'id_alarme_provedor', 'nome_pt', 'nome_original'],
+        }),
+        ('Categoria', {
+            'fields': ['tipo'],
+            'description': (
+                'Preenchida automaticamente na primeira detecção do alarme. '
+                'Corrija manualmente se a inferência automática errou. '
+                'Valores: equipamento · comunicacao · rede_eletrica · sistema_desligado · preventivo'
+            ),
         }),
         ('Nível de severidade', {
             'fields': ['nivel_padrao', 'nivel_sobrescrito'],
@@ -66,7 +74,7 @@ class AlertaAdmin(admin.ModelAdmin):
         'usina', 'nivel', 'mensagem_resumida', 'estado',
         'catalogo_alarme', 'inicio', 'notificacao_enviada',
     ]
-    list_filter = ['nivel', 'estado', 'usina__provedor']
+    list_filter = ['nivel', 'estado', 'usina__provedor', 'catalogo_alarme__tipo']
     search_fields = ['mensagem', 'usina__nome', 'equipamento_sn', 'id_alerta_provedor']
     readonly_fields = ['id', 'criado_em', 'atualizado_em', 'notificacao_enviada', 'payload_bruto']
     raw_id_fields = ['catalogo_alarme']

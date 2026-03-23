@@ -1,0 +1,600 @@
+{
+  "title": "Monitoramento de Alertas",
+  "uid": "alertas-monitoramento",
+  "schemaVersion": 38,
+  "version": 1,
+  "timezone": "America/Sao_Paulo",
+  "refresh": "5m",
+  "time": { "from": "now-7d", "to": "now" },
+  "tags": ["alertas", "solar"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Alertas Abertos",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 48 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta WHERE estado IN ('ativo', 'em_atendimento')",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Críticos Ativos",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 48 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta WHERE estado IN ('ativo', 'em_atendimento') AND nivel = 'critico'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Sistema Desligado",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 48 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "dark-red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta a LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE a.estado IN ('ativo', 'em_atendimento') AND ca.tipo = 'sistema_desligado'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Em Atendimento",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 48 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "fixed", "fixedColor": "blue" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta WHERE estado = 'em_atendimento'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Usinas Afetadas",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 48 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(DISTINCT usina_id)::int FROM alertas_alerta WHERE estado IN ('ativo', 'em_atendimento')",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Resolvidos (últimas 24h)",
+      "type": "stat",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 48 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "fixed", "fixedColor": "green" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta WHERE estado = 'resolvido' AND fim > NOW() - INTERVAL '24 hours'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Distribuição de Alertas Abertos",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 8,
+      "title": "Por Categoria",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 5, "w": 8, "h": 8 },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "left" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Categoria" },
+            "properties": [
+              { "id": "custom.width", "value": 200 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "sistema_desligado": { "text": "Sistema Desligado", "color": "dark-red",  "index": 0 } } },
+                  { "type": "value", "options": { "equipamento":       { "text": "Equipamento",       "color": "orange",   "index": 1 } } },
+                  { "type": "value", "options": { "rede_eletrica":     { "text": "Rede Elétrica",     "color": "yellow",   "index": 2 } } },
+                  { "type": "value", "options": { "comunicacao":       { "text": "Comunicação",       "color": "blue",     "index": 3 } } },
+                  { "type": "value", "options": { "preventivo":        { "text": "Preventivo",        "color": "green",    "index": 4 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-text" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Alertas" },
+            "properties": [
+              { "id": "custom.width", "value": 80 },
+              { "id": "custom.displayMode", "value": "lcd-gauge" },
+              { "id": "color", "value": { "mode": "thresholds" } },
+              {
+                "id": "thresholds",
+                "value": {
+                  "steps": [
+                    { "color": "green",  "value": 0 },
+                    { "color": "yellow", "value": 1 },
+                    { "color": "orange", "value": 10 },
+                    { "color": "red",    "value": 30 }
+                  ]
+                }
+              },
+              { "id": "max", "value": 100 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COALESCE(ca.tipo, 'sem_categoria') AS \"Categoria\", COUNT(*)::int AS \"Alertas\" FROM alertas_alerta a LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE a.estado IN ('ativo', 'em_atendimento') GROUP BY ca.tipo ORDER BY \"Alertas\" DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Por Nível de Severidade",
+      "type": "table",
+      "gridPos": { "x": 8, "y": 5, "w": 8, "h": 8 },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "left" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Nível" },
+            "properties": [
+              { "id": "custom.width", "value": 130 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "critico":    { "text": "CRÍTICO",    "color": "dark-red", "index": 0 } } },
+                  { "type": "value", "options": { "importante": { "text": "IMPORTANTE", "color": "orange",  "index": 1 } } },
+                  { "type": "value", "options": { "aviso":      { "text": "AVISO",      "color": "yellow",  "index": 2 } } },
+                  { "type": "value", "options": { "info":       { "text": "INFO",       "color": "green",   "index": 3 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-text" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Alertas" },
+            "properties": [
+              { "id": "custom.width", "value": 80 },
+              { "id": "custom.displayMode", "value": "lcd-gauge" },
+              { "id": "color", "value": { "mode": "thresholds" } },
+              {
+                "id": "thresholds",
+                "value": {
+                  "steps": [
+                    { "color": "green",  "value": 0 },
+                    { "color": "yellow", "value": 1 },
+                    { "color": "orange", "value": 10 },
+                    { "color": "red",    "value": 30 }
+                  ]
+                }
+              },
+              { "id": "max", "value": 100 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT nivel AS \"Nível\", COUNT(*)::int AS \"Alertas\" FROM alertas_alerta WHERE estado IN ('ativo', 'em_atendimento') GROUP BY nivel ORDER BY CASE nivel WHEN 'critico' THEN 1 WHEN 'importante' THEN 2 WHEN 'aviso' THEN 3 ELSE 4 END",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Por Provedor",
+      "type": "table",
+      "gridPos": { "x": 16, "y": 5, "w": 8, "h": 8 },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "left" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Provedor" },
+            "properties": [
+              { "id": "custom.width", "value": 150 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Alertas" },
+            "properties": [
+              { "id": "custom.width", "value": 80 },
+              { "id": "custom.displayMode", "value": "lcd-gauge" },
+              { "id": "color", "value": { "mode": "thresholds" } },
+              {
+                "id": "thresholds",
+                "value": {
+                  "steps": [
+                    { "color": "green",  "value": 0 },
+                    { "color": "yellow", "value": 1 },
+                    { "color": "orange", "value": 10 },
+                    { "color": "red",    "value": 30 }
+                  ]
+                }
+              },
+              { "id": "max", "value": 100 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT INITCAP(u.provedor) AS \"Provedor\", COUNT(*)::int AS \"Alertas\" FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id WHERE a.estado IN ('ativo', 'em_atendimento') GROUP BY u.provedor ORDER BY \"Alertas\" DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Lista de Alertas Abertos",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 13, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 12,
+      "title": "Alertas Abertos — Detalhamento",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 12 },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false },
+        "sortBy": [
+          { "displayName": "Nível", "desc": false }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "left" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Nível" },
+            "properties": [
+              { "id": "custom.width", "value": 120 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "critico":    { "text": "CRÍTICO",    "color": "dark-red", "index": 0 } } },
+                  { "type": "value", "options": { "importante": { "text": "IMPORTANTE", "color": "orange",  "index": 1 } } },
+                  { "type": "value", "options": { "aviso":      { "text": "AVISO",      "color": "yellow",  "index": 2 } } },
+                  { "type": "value", "options": { "info":       { "text": "INFO",       "color": "green",   "index": 3 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Estado" },
+            "properties": [
+              { "id": "custom.width", "value": 130 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "ativo":          { "text": "Ativo",          "color": "orange", "index": 0 } } },
+                  { "type": "value", "options": { "em_atendimento": { "text": "Em Atendimento", "color": "blue",   "index": 1 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Categoria" },
+            "properties": [
+              { "id": "custom.width", "value": 150 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "sistema_desligado": { "text": "Sistema Desligado", "index": 0 } } },
+                  { "type": "value", "options": { "equipamento":       { "text": "Equipamento",       "index": 1 } } },
+                  { "type": "value", "options": { "rede_eletrica":     { "text": "Rede Elétrica",     "index": 2 } } },
+                  { "type": "value", "options": { "comunicacao":       { "text": "Comunicação",       "index": 3 } } },
+                  { "type": "value", "options": { "preventivo":        { "text": "Preventivo",        "index": 4 } } }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Duração" },
+            "properties": [
+              { "id": "custom.width", "value": 120 },
+              { "id": "unit", "value": "s" },
+              { "id": "decimals", "value": 0 },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "color", "value": { "mode": "thresholds" } },
+              {
+                "id": "thresholds",
+                "value": {
+                  "steps": [
+                    { "color": "green",      "value": 0 },
+                    { "color": "yellow",     "value": 3600 },
+                    { "color": "orange",     "value": 21600 },
+                    { "color": "dark-red",   "value": 86400 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Usina" },
+            "properties": [
+              { "id": "custom.width", "value": 200 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Provedor" },
+            "properties": [
+              { "id": "custom.width", "value": 100 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Equipamento" },
+            "properties": [
+              { "id": "custom.width", "value": 110 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Início" },
+            "properties": [
+              { "id": "custom.width", "value": 170 },
+              { "id": "unit", "value": "time:DD/MM/YYYY HH:mm" }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT u.nome AS \"Usina\", INITCAP(u.provedor) AS \"Provedor\", COALESCE(ca.tipo, '—') AS \"Categoria\", a.nivel AS \"Nível\", a.mensagem AS \"Problema\", COALESCE(NULLIF(a.equipamento_sn, ''), '—') AS \"Equipamento\", a.inicio AS \"Início\", EXTRACT(EPOCH FROM (NOW() - a.inicio))::bigint AS \"Duração\", a.estado AS \"Estado\" FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE a.estado IN ('ativo', 'em_atendimento') ORDER BY CASE a.nivel WHEN 'critico' THEN 1 WHEN 'importante' THEN 2 WHEN 'aviso' THEN 3 ELSE 4 END, a.inicio ASC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Histórico (últimos 30 dias)",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 26, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 14,
+      "title": "Novos Alertas por Categoria / Dia",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 27, "w": 12, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Sistema Desligado" },
+            "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "dark-red" } } ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Equipamento" },
+            "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Rede Elétrica" },
+            "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } } ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Comunicação" },
+            "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Preventivo" },
+            "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT $__timeGroupAlias(a.inicio, '1d'), COUNT(CASE WHEN ca.tipo = 'sistema_desligado' THEN 1 END) AS \"Sistema Desligado\", COUNT(CASE WHEN ca.tipo = 'equipamento' THEN 1 END) AS \"Equipamento\", COUNT(CASE WHEN ca.tipo = 'rede_eletrica' THEN 1 END) AS \"Rede Elétrica\", COUNT(CASE WHEN ca.tipo = 'comunicacao' THEN 1 END) AS \"Comunicação\", COUNT(CASE WHEN ca.tipo = 'preventivo' THEN 1 END) AS \"Preventivo\" FROM alertas_alerta a LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE $__timeFilter(a.inicio) GROUP BY 1 ORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Alertas Criados vs Resolvidos / Dia",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 27, "w": 12, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Criados" },
+            "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Resolvidos" },
+            "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT $__timeGroupAlias(inicio, '1d'), COUNT(*) AS \"Criados\" FROM alertas_alerta WHERE $__timeFilter(inicio) GROUP BY 1 ORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        },
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT $__timeGroupAlias(fim, '1d'), COUNT(*) AS \"Resolvidos\" FROM alertas_alerta WHERE fim IS NOT NULL AND $__timeFilter(fim) GROUP BY 1 ORDER BY 1",
+          "format": "time_series",
+          "refId": "B"
+        }
+      ]
+    }
+  ]
+}

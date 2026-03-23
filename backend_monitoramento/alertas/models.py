@@ -20,11 +20,25 @@ class CatalogoAlarme(models.Model):
         ('critico',    'Crítico'),
     ]
 
+    TIPO_CHOICES = [
+        ('equipamento',       'Equipamento — falha em hardware (inversor, string, módulo)'),
+        ('comunicacao',       'Comunicação — perda de link / conectividade'),
+        ('rede_eletrica',     'Rede elétrica — instabilidade na rede (grid)'),
+        ('sistema_desligado', 'Sistema desligado — usina completamente parada'),
+        ('preventivo',        'Preventivo — informativo, manutenção, sem urgência'),
+    ]
+
     provedor = models.CharField(max_length=50, db_index=True)
     id_alarme_provedor = models.CharField(max_length=100, verbose_name='ID do alarme no provedor')
     nome_pt = models.CharField(max_length=200, verbose_name='Nome em português')
     nome_original = models.CharField(max_length=200, blank=True, verbose_name='Nome original (do provedor)')
-    tipo = models.CharField(max_length=100, blank=True, verbose_name='Categoria/tipo')
+    tipo = models.CharField(
+        max_length=100,
+        blank=True,
+        choices=TIPO_CHOICES,
+        verbose_name='Categoria',
+        help_text='Preenchida automaticamente na primeira detecção. Pode ser corrigida manualmente.',
+    )
     nivel_padrao = models.CharField(
         max_length=10,
         choices=NIVEL_CHOICES,

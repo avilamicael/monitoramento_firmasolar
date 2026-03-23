@@ -4,10 +4,10 @@ from .models import ConfiguracaoNotificacao
 
 @admin.register(ConfiguracaoNotificacao)
 class ConfiguracaoNotificacaoAdmin(admin.ModelAdmin):
-    list_display = ['canal', 'ativo', 'notificar_critico', 'notificar_aviso', 'atualizado_em']
+    list_display = ['canal', 'ativo', 'notificar_critico', 'notificar_importante', 'notificar_aviso', 'notificar_info', 'atualizado_em']
     fields = [
         'canal', 'ativo',
-        'notificar_critico', 'notificar_aviso',
+        'notificar_critico', 'notificar_importante', 'notificar_aviso', 'notificar_info',
         'destinatarios',
         'atualizado_em',
     ]

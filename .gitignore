@@ -3,3 +3,5 @@ CLAUDE.md
 
 # Dados persistidos localmente (banco, cache, métricas)
 data/
+
+.env

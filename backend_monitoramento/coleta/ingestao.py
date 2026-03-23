@@ -18,6 +18,7 @@ from django.utils import timezone as dj_timezone
 from provedores.base import DadosUsina, DadosInversor, DadosAlerta
 from usinas.models import Usina, SnapshotUsina, Inversor, SnapshotInversor
 from alertas.models import Alerta, CatalogoAlarme, RegraSupressao
+from alertas.categorizacao import inferir_categoria
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +128,7 @@ class ServicoIngestao:
 
         - Consulta o CatalogoAlarme para obter nível efetivo e verificar supressão
         - Alarmes suprimidos (globalmente ou via RegraSupressao) são ignorados
-        - Novos alertas → cria + dispara notificação
+        - Novos alertas → cria + agenda notificação assíncrona (após commit)
         - Alertas existentes → detecta escalonamento; atualiza nível/sugestão
         - Alertas que sumiram do provedor → marca como 'resolvido'
         - Alertas 'em_atendimento' não têm o estado sobrescrito automaticamente
@@ -136,8 +137,7 @@ class ServicoIngestao:
             alertas: lista de alertas retornados pelo provedor neste ciclo
             usinas_por_id_provedor: dicionário {id_provedor: Usina} com as usinas deste ciclo
         """
-        from notificacoes.servico import ServicoNotificacao
-        servico_notificacao = ServicoNotificacao()
+        from notificacoes.tasks import enviar_notificacao_alerta
 
         if not usinas_por_id_provedor:
             return
@@ -165,13 +165,17 @@ class ServicoIngestao:
                         'nome_pt': dados.mensagem[:200],
                         'nome_original': dados.mensagem[:200],
                         'nivel_padrao': dados.nivel,
+                        'tipo': inferir_categoria(
+                            dados.mensagem, provedor, dados.id_tipo_alarme_provedor
+                        ),
                         'criado_auto': True,
                     },
                 )
                 if criado_catalogo:
                     logger.info(
-                        '%s: novo tipo de alarme auto-cadastrado no catálogo: %s — "%s"',
+                        '%s: novo tipo de alarme auto-cadastrado no catálogo: %s — "%s" [categoria: %s]',
                         provedor, dados.id_tipo_alarme_provedor, dados.mensagem[:80],
+                        catalogo.tipo,
                     )
 
                 # Supressão global no catálogo
@@ -218,12 +222,18 @@ class ServicoIngestao:
             )
 
             if criado:
-                servico_notificacao.notificar_novo_alerta(alerta)
+                alerta_id = str(alerta.id)
+                transaction.on_commit(
+                    lambda aid=alerta_id: enviar_notificacao_alerta.delay(aid, 'novo')
+                )
                 Alerta.objects.filter(pk=alerta.pk).update(notificacao_enviada=True)
             else:
                 # Detectar escalonamento (qualquer subida de nível, não só aviso→crítico)
                 if alerta.nivel_escalou_para(nivel_efetivo):
-                    servico_notificacao.notificar_alerta_escalado(alerta)
+                    alerta_id = str(alerta.id)
+                    transaction.on_commit(
+                        lambda aid=alerta_id: enviar_notificacao_alerta.delay(aid, 'escalado')
+                    )
 
                 campos_update = {
                     'nivel': nivel_efetivo,
