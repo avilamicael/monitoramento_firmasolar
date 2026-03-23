@@ -154,6 +154,12 @@ class ServicoIngestao:
             if not dados.id_alerta_provedor:
                 continue
 
+            # Alertas que o provedor já marcou como resolvidos não devem criar nem
+            # manter registros ativos. Ignora aqui — o bloco de auto-resolução no
+            # final do ciclo cuidará de fechar caso já existam no banco.
+            if dados.estado == 'resolvido':
+                continue
+
             # Lookup ou auto-criação no catálogo (apenas se o provedor envia um ID de tipo)
             catalogo = None
             nivel_efetivo = dados.nivel

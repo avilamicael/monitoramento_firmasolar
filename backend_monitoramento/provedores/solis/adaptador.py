@@ -67,7 +67,13 @@ class SolisAdaptador(AdaptadorProvedor):
 
     def buscar_alertas(self, id_usina_provedor: str | None = None) -> list[DadosAlerta]:
         registros = listar_alertas(self._api_key, self._app_secret, id_usina_provedor)
-        return [self._normalizar_alerta(r) for r in registros]
+        # Filtra na origem: ignora alarmes já resolvidos pelo Solis (state != '0').
+        # O Solis retorna histórico de alarmes resolvidos junto com os ativos, o que
+        # causaria criação de alertas 'ativo' com datas antigas no nosso sistema.
+        return [
+            self._normalizar_alerta(r) for r in registros
+            if str(r.get('state') or '0') == '0'
+        ]
 
     def _normalizar_usina(self, r: dict) -> DadosUsina:
         return DadosUsina(
@@ -108,8 +114,18 @@ class SolisAdaptador(AdaptadorProvedor):
     def _normalizar_alerta(self, r: dict) -> DadosAlerta:
         nivel_raw = str(r.get('alarmLevel') or '3')
         estado_raw = str(r.get('state') or '0')
+        # O Solis usa id="-1" para alarmes genéricos, o que colapsa alarmes de tipos
+        # diferentes da mesma usina no mesmo registro (viola unicidade real).
+        # Chave composta alarmCode_deviceSn garante unicidade por tipo e equipamento.
+        alarm_id_raw = str(r.get('id') or '')
+        if alarm_id_raw == '-1' or not alarm_id_raw:
+            alarm_code = str(r.get('alarmCode') or '')
+            device_sn = str(r.get('alarmDeviceSn') or r.get('sn') or '')
+            id_alerta = f"{alarm_code}_{device_sn}" if alarm_code else ''
+        else:
+            id_alerta = alarm_id_raw
         return DadosAlerta(
-            id_alerta_provedor=str(r.get('id') or r.get('alarmCode') or ''),
+            id_alerta_provedor=id_alerta,
             id_usina_provedor=str(r.get('stationId') or ''),
             mensagem=r.get('alarmMsg') or r.get('alarmCode') or '',
             nivel=_NIVEL_ALERTA_MAP.get(nivel_raw, 'aviso'),
