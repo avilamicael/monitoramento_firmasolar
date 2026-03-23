@@ -1,0 +1,454 @@
+{
+  "title": "Detalhe da Usina",
+  "uid": "detalhe-usina",
+  "schemaVersion": 38,
+  "version": 1,
+  "timezone": "America/Sao_Paulo",
+  "refresh": "5m",
+  "time": { "from": "now-7d", "to": "now" },
+  "tags": ["alertas", "solar", "detalhe"],
+  "templating": {
+    "list": [
+      {
+        "name": "usina",
+        "label": "Usina",
+        "type": "query",
+        "datasource": { "uid": "postgres-firmasolar" },
+        "query": "SELECT nome FROM usinas_usina ORDER BY nome",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Provedor",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 3 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value",
+        "text": { "valueSize": 28 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "—",
+          "color": { "mode": "fixed", "fixedColor": "blue" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT INITCAP(provedor) FROM usinas_usina WHERE nome = '${usina}'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Capacidade Instalada",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 3 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 28 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "—",
+          "unit": "kwatt",
+          "decimals": 2,
+          "color": { "mode": "fixed", "fixedColor": "blue" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT capacidade_kwp FROM usinas_usina WHERE nome = '${usina}'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Status Atual",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 3 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 28 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "sem dados",
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "normal":    { "text": "Normal",    "color": "green",  "index": 0 } } },
+            { "type": "value", "options": { "offline":   { "text": "Offline",   "color": "red",    "index": 1 } } },
+            { "type": "value", "options": { "aviso":     { "text": "Aviso",     "color": "yellow", "index": 2 } } },
+            { "type": "value", "options": { "construcao":{ "text": "Construção","color": "gray",   "index": 3 } } }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT s.status FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}' ORDER BY s.coletado_em DESC LIMIT 1",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Alertas Abertos",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 3 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 28 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red",   "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id WHERE u.nome = '${usina}' AND a.estado IN ('ativo', 'em_atendimento')",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Potência Atual",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 3 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 28 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "—",
+          "unit": "kwatt",
+          "decimals": 2,
+          "color": { "mode": "fixed", "fixedColor": "green" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT s.potencia_kw FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}' ORDER BY s.coletado_em DESC LIMIT 1",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Energia Hoje",
+      "type": "stat",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 3 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 28 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "—",
+          "unit": "kwatth",
+          "decimals": 2,
+          "color": { "mode": "fixed", "fixedColor": "green" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT s.energia_hoje_kwh FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}' ORDER BY s.coletado_em DESC LIMIT 1",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Produção",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 3, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 8,
+      "title": "Potência Gerada (kW)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "custom": { "lineWidth": 2, "fillOpacity": 20 },
+          "unit": "kwatt",
+          "decimals": 2,
+          "min": 0
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT $__timeGroupAlias(s.coletado_em, '10m'), AVG(s.potencia_kw) AS \"Potência (kW)\" FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}' AND $__timeFilter(s.coletado_em) GROUP BY 1 ORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Energia Acumulada no Dia (kWh)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "custom": { "lineWidth": 2, "fillOpacity": 20 },
+          "unit": "kwatth",
+          "decimals": 2,
+          "min": 0
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT $__timeGroupAlias(s.coletado_em, '10m'), MAX(s.energia_hoje_kwh) AS \"Energia Hoje (kWh)\" FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}' AND $__timeFilter(s.coletado_em) GROUP BY 1 ORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Histórico de Alertas",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 11,
+      "title": "Alertas da Usina",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 13, "w": 24, "h": 10 },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false },
+        "sortBy": [
+          { "displayName": "Estado", "desc": false }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Nível" },
+            "properties": [
+              { "id": "custom.width", "value": 110 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "critico":    { "text": "CRÍTICO",    "color": "dark-red", "index": 0 } } },
+                  { "type": "value", "options": { "importante": { "text": "IMPORTANTE", "color": "orange",  "index": 1 } } },
+                  { "type": "value", "options": { "aviso":      { "text": "AVISO",      "color": "yellow",  "index": 2 } } },
+                  { "type": "value", "options": { "info":       { "text": "INFO",       "color": "green",   "index": 3 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Estado" },
+            "properties": [
+              { "id": "custom.width", "value": 130 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "ativo":          { "text": "Ativo",          "color": "orange", "index": 0 } } },
+                  { "type": "value", "options": { "em_atendimento": { "text": "Em Atendimento", "color": "blue",   "index": 1 } } },
+                  { "type": "value", "options": { "resolvido":      { "text": "Resolvido",      "color": "green",  "index": 2 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Categoria" },
+            "properties": [
+              { "id": "custom.width", "value": 150 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "sistema_desligado": { "text": "Sistema Desligado", "index": 0 } } },
+                  { "type": "value", "options": { "equipamento":       { "text": "Equipamento",       "index": 1 } } },
+                  { "type": "value", "options": { "rede_eletrica":     { "text": "Rede Elétrica",     "index": 2 } } },
+                  { "type": "value", "options": { "comunicacao":       { "text": "Comunicação",       "index": 3 } } },
+                  { "type": "value", "options": { "preventivo":        { "text": "Preventivo",        "index": 4 } } }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Duração" },
+            "properties": [
+              { "id": "custom.width", "value": 110 },
+              { "id": "unit", "value": "s" },
+              { "id": "decimals", "value": 0 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Início" },
+            "properties": [
+              { "id": "custom.width", "value": 160 },
+              { "id": "unit", "value": "time:DD/MM/YYYY HH:mm" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Fim" },
+            "properties": [
+              { "id": "custom.width", "value": 160 },
+              { "id": "unit", "value": "time:DD/MM/YYYY HH:mm" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Anotações" },
+            "properties": [
+              { "id": "custom.width", "value": 200 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT a.nivel AS \"Nível\", COALESCE(ca.tipo, '—') AS \"Categoria\", a.mensagem AS \"Problema\", COALESCE(NULLIF(a.equipamento_sn, ''), '—') AS \"Equipamento\", a.inicio AS \"Início\", a.fim AS \"Fim\", CASE WHEN a.fim IS NULL THEN EXTRACT(EPOCH FROM (NOW() - a.inicio))::bigint ELSE EXTRACT(EPOCH FROM (a.fim - a.inicio))::bigint END AS \"Duração\", a.estado AS \"Estado\", COALESCE(NULLIF(a.anotacoes, ''), '—') AS \"Anotações\" FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE u.nome = '${usina}' ORDER BY CASE a.estado WHEN 'ativo' THEN 1 WHEN 'em_atendimento' THEN 2 ELSE 3 END, a.inicio DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Inversores",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 13,
+      "title": "Status dos Inversores",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false }
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Estado" },
+            "properties": [
+              { "id": "custom.width", "value": 110 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "normal":  { "text": "Normal",  "color": "green",  "index": 0 } } },
+                  { "type": "value", "options": { "offline": { "text": "Offline", "color": "red",    "index": 1 } } },
+                  { "type": "value", "options": { "aviso":   { "text": "Aviso",   "color": "yellow", "index": 2 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Potência (kW)" },
+            "properties": [
+              { "id": "custom.width", "value": 120 },
+              { "id": "unit", "value": "kwatt" },
+              { "id": "decimals", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Energia Hoje (kWh)" },
+            "properties": [
+              { "id": "custom.width", "value": 140 },
+              { "id": "unit", "value": "kwatth" },
+              { "id": "decimals", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Último Dado" },
+            "properties": [
+              { "id": "custom.width", "value": 160 },
+              { "id": "unit", "value": "time:DD/MM/YYYY HH:mm" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Serial" },
+            "properties": [
+              { "id": "custom.width", "value": 160 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Modelo" },
+            "properties": [
+              { "id": "custom.width", "value": 160 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT i.numero_serie AS \"Serial\", i.modelo AS \"Modelo\", COALESCE(s.estado, '—') AS \"Estado\", COALESCE(s.pac_kw, 0) AS \"Potência (kW)\", COALESCE(s.energia_hoje_kwh, 0) AS \"Energia Hoje (kWh)\", s.coletado_em AS \"Último Dado\" FROM usinas_inversor i JOIN usinas_usina u ON i.usina_id = u.id LEFT JOIN usinas_snapshotinversor s ON i.ultimo_snapshot_id = s.id WHERE u.nome = '${usina}' ORDER BY i.numero_serie",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

@@ -465,7 +465,17 @@
           {
             "matcher": { "id": "byName", "options": "Usina" },
             "properties": [
-              { "id": "custom.width", "value": 200 }
+              { "id": "custom.width", "value": 200 },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver detalhe da usina",
+                    "url": "/d/detalhe-usina/detalhe-da-usina?var-usina=${__value.text}",
+                    "targetBlank": true
+                  }
+                ]
+              }
             ]
           },
           {
