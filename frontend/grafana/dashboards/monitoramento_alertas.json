@@ -2,7 +2,7 @@
   "title": "Monitoramento de Alertas",
   "uid": "alertas-monitoramento",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "timezone": "America/Sao_Paulo",
   "refresh": "5m",
   "time": { "from": "now-7d", "to": "now" },
@@ -28,7 +28,14 @@
               { "color": "green", "value": 0 },
               { "color": "red", "value": 1 }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Ver lista de alertas abertos",
+              "url": "/d/lista-alertas/lista-de-alertas?var-filtro=abertos",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "targets": [
@@ -60,7 +67,14 @@
               { "color": "green", "value": 0 },
               { "color": "red", "value": 1 }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Ver alertas críticos",
+              "url": "/d/lista-alertas/lista-de-alertas?var-filtro=critico",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "targets": [
@@ -92,7 +106,14 @@
               { "color": "green", "value": 0 },
               { "color": "dark-red", "value": 1 }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Ver sistemas desligados",
+              "url": "/d/lista-alertas/lista-de-alertas?var-filtro=sistema_desligado",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "targets": [
@@ -118,7 +139,14 @@
       "fieldConfig": {
         "defaults": {
           "noValue": "0",
-          "color": { "mode": "fixed", "fixedColor": "blue" }
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "links": [
+            {
+              "title": "Ver alertas em atendimento",
+              "url": "/d/lista-alertas/lista-de-alertas?var-filtro=em_atendimento",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "targets": [
@@ -150,7 +178,14 @@
               { "color": "green", "value": 0 },
               { "color": "orange", "value": 1 }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Ver usinas afetadas",
+              "url": "/d/usinas-afetadas/usinas-afetadas",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "targets": [
@@ -176,7 +211,14 @@
       "fieldConfig": {
         "defaults": {
           "noValue": "0",
-          "color": { "mode": "fixed", "fixedColor": "green" }
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "links": [
+            {
+              "title": "Ver alertas resolvidos (24h)",
+              "url": "/d/lista-alertas/lista-de-alertas?var-filtro=resolvidos_24h",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "targets": [

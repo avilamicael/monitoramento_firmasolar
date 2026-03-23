@@ -1,0 +1,183 @@
+{
+  "title": "Lista de Alertas",
+  "uid": "lista-alertas",
+  "schemaVersion": 38,
+  "version": 1,
+  "timezone": "America/Sao_Paulo",
+  "refresh": "1m",
+  "time": { "from": "now-7d", "to": "now" },
+  "tags": ["alertas", "solar", "detalhe"],
+  "templating": {
+    "list": [
+      {
+        "name": "filtro",
+        "label": "Visualizar",
+        "type": "custom",
+        "query": "abertos,critico,sistema_desligado,em_atendimento,resolvidos_24h",
+        "options": [
+          { "text": "Alertas Abertos",    "value": "abertos",           "selected": true  },
+          { "text": "Críticos Ativos",    "value": "critico",           "selected": false },
+          { "text": "Sistema Desligado",  "value": "sistema_desligado", "selected": false },
+          { "text": "Em Atendimento",     "value": "em_atendimento",    "selected": false },
+          { "text": "Resolvidos (24h)",   "value": "resolvidos_24h",    "selected": false }
+        ],
+        "current": { "text": "Alertas Abertos", "value": "abertos" },
+        "hide": 0,
+        "refresh": 0,
+        "includeAll": false,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "text": { "valueSize": 48 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red",   "value": 1 }
+            ]
+          },
+          "links": [
+            {
+              "title": "Voltar ao monitoramento",
+              "url": "/d/alertas-monitoramento/monitoramento-de-alertas",
+              "targetBlank": false
+            }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta a LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE ('${filtro}' = 'abertos' AND a.estado IN ('ativo','em_atendimento')) OR ('${filtro}' = 'critico' AND a.estado IN ('ativo','em_atendimento') AND a.nivel = 'critico') OR ('${filtro}' = 'sistema_desligado' AND a.estado IN ('ativo','em_atendimento') AND ca.tipo = 'sistema_desligado') OR ('${filtro}' = 'em_atendimento' AND a.estado = 'em_atendimento') OR ('${filtro}' = 'resolvidos_24h' AND a.estado = 'resolvido' AND a.fim > NOW() - INTERVAL '24 hours')",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Alertas",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 20 },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false },
+        "sortBy": [
+          { "displayName": "Nível", "desc": false }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Nível" },
+            "properties": [
+              { "id": "custom.width", "value": 110 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "critico":    { "text": "CRÍTICO",    "color": "dark-red", "index": 0 } } },
+                  { "type": "value", "options": { "importante": { "text": "IMPORTANTE", "color": "orange",  "index": 1 } } },
+                  { "type": "value", "options": { "aviso":      { "text": "AVISO",      "color": "yellow",  "index": 2 } } },
+                  { "type": "value", "options": { "info":       { "text": "INFO",       "color": "green",   "index": 3 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Estado" },
+            "properties": [
+              { "id": "custom.width", "value": 130 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "ativo":          { "text": "Ativo",          "color": "orange", "index": 0 } } },
+                  { "type": "value", "options": { "em_atendimento": { "text": "Em Atendimento", "color": "blue",   "index": 1 } } },
+                  { "type": "value", "options": { "resolvido":      { "text": "Resolvido",      "color": "green",  "index": 2 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Categoria" },
+            "properties": [
+              { "id": "custom.width", "value": 160 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "sistema_desligado": { "text": "Sistema Desligado", "index": 0 } } },
+                  { "type": "value", "options": { "equipamento":       { "text": "Equipamento",       "index": 1 } } },
+                  { "type": "value", "options": { "rede_eletrica":     { "text": "Rede Elétrica",     "index": 2 } } },
+                  { "type": "value", "options": { "comunicacao":       { "text": "Comunicação",       "index": 3 } } },
+                  { "type": "value", "options": { "preventivo":        { "text": "Preventivo",        "index": 4 } } }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Duração" },
+            "properties": [
+              { "id": "custom.width", "value": 110 },
+              { "id": "unit", "value": "s" },
+              { "id": "decimals", "value": 0 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Início" },
+            "properties": [
+              { "id": "custom.width", "value": 160 },
+              { "id": "unit", "value": "time:DD/MM/YYYY HH:mm" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Usina" },
+            "properties": [
+              { "id": "custom.width", "value": 220 },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ver detalhe da usina",
+                    "url": "/d/detalhe-usina/detalhe-da-usina?var-usina=${__value.text}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Anotações" },
+            "properties": [
+              { "id": "custom.minWidth", "value": 200 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT u.nome AS \"Usina\", a.nivel AS \"Nível\", COALESCE(ca.tipo, '—') AS \"Categoria\", a.mensagem AS \"Problema\", COALESCE(NULLIF(a.equipamento_sn,''),'—') AS \"Equipamento\", a.inicio AS \"Início\", CASE WHEN a.fim IS NULL THEN EXTRACT(EPOCH FROM (NOW() - a.inicio))::bigint ELSE EXTRACT(EPOCH FROM (a.fim - a.inicio))::bigint END AS \"Duração\", a.estado AS \"Estado\", COALESCE(NULLIF(a.anotacoes,''),'—') AS \"Anotações\" FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE ('${filtro}' = 'abertos' AND a.estado IN ('ativo','em_atendimento')) OR ('${filtro}' = 'critico' AND a.estado IN ('ativo','em_atendimento') AND a.nivel = 'critico') OR ('${filtro}' = 'sistema_desligado' AND a.estado IN ('ativo','em_atendimento') AND ca.tipo = 'sistema_desligado') OR ('${filtro}' = 'em_atendimento' AND a.estado = 'em_atendimento') OR ('${filtro}' = 'resolvidos_24h' AND a.estado = 'resolvido' AND a.fim > NOW() - INTERVAL '24 hours') ORDER BY CASE a.nivel WHEN 'critico' THEN 1 WHEN 'importante' THEN 2 WHEN 'aviso' THEN 3 ELSE 4 END, a.inicio DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
