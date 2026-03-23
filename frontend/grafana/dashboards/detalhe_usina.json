@@ -2,7 +2,7 @@
   "title": "Detalhe da Usina",
   "uid": "detalhe-usina",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "timezone": "America/Sao_Paulo",
   "refresh": "5m",
   "time": { "from": "now-7d", "to": "now" },
@@ -31,7 +31,7 @@
       "options": {
         "colorMode": "background",
         "graphMode": "none",
-        "reduceOptions": { "calcs": ["last"] },
+        "reduceOptions": { "calcs": ["last"], "fields": "/.*/", "values": false },
         "textMode": "value",
         "text": { "valueSize": 28 }
       },
@@ -86,7 +86,8 @@
       "options": {
         "colorMode": "background",
         "graphMode": "none",
-        "reduceOptions": { "calcs": ["last"] },
+        "reduceOptions": { "calcs": ["last"], "fields": "/.*/", "values": false },
+        "textMode": "value",
         "text": { "valueSize": 28 }
       },
       "fieldConfig": {
