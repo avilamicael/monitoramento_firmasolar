@@ -242,9 +242,10 @@ class ServicoIngestao:
                 }
                 if catalogo and alerta.catalogo_alarme_id is None:
                     campos_update['catalogo_alarme'] = catalogo
-                # Reabrir se tinha sido resolvido e voltou
+                # Reabrir se tinha sido resolvido e voltou — limpa fim para não distorcer duração
                 if alerta.estado == 'resolvido':
                     campos_update['estado'] = 'ativo'
+                    campos_update['fim'] = None
                 # Não sobrescreve 'em_atendimento' — equipe está ciente
 
                 Alerta.objects.filter(pk=alerta.pk).update(**campos_update)
