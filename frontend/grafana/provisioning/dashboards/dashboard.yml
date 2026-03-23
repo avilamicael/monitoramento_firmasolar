@@ -1,15 +1,15 @@
 apiVersion: 1
 
 providers:
-  - name: firma_solar
-    folder: "Firma Solar"
+  - name: principal
+    folder: ""
     type: file
     disableDeletion: false
     updateIntervalSeconds: 30
     options:
       path: /var/lib/grafana/dashboards/principal
 
-  - name: firma_solar_detalhes
+  - name: detalhes
     folder: "Detalhes"
     type: file
     disableDeletion: false
