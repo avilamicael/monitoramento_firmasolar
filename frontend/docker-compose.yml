@@ -18,6 +18,14 @@ services:
       # Viewer não pode editar nem criar dashboards
       - GF_USERS_DEFAULT_THEME=dark
       - GF_AUTH_ANONYMOUS_ENABLED=false
+      # Formato de datas em DD/MM/YYYY (padrão brasileiro)
+      - GF_DATE_FORMATS_FULL_DATE=DD/MM/YYYY HH:mm:ss
+      - GF_DATE_FORMATS_INTERVAL_SECOND=HH:mm:ss
+      - GF_DATE_FORMATS_INTERVAL_MINUTE=DD/MM HH:mm
+      - GF_DATE_FORMATS_INTERVAL_HOUR=DD/MM HH:mm
+      - GF_DATE_FORMATS_INTERVAL_DAY=DD/MM/YYYY
+      - GF_DATE_FORMATS_INTERVAL_MONTH=MM/YYYY
+      - GF_DATE_FORMATS_INTERVAL_YEAR=YYYY
       # Credenciais do PostgreSQL — repassadas para o datasource via provisioning
       # DB_HOST aponta para o serviço db do backend via rede compartilhada firmasolar_obs
       - DB_HOST=backend_monitoramento-db-1
