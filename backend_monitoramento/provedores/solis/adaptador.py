@@ -67,13 +67,26 @@ class SolisAdaptador(AdaptadorProvedor):
 
     def buscar_alertas(self, id_usina_provedor: str | None = None) -> list[DadosAlerta]:
         registros = listar_alertas(self._api_key, self._app_secret, id_usina_provedor)
-        # Filtra na origem: ignora alarmes já resolvidos pelo Solis (state != '0').
-        # O Solis retorna histórico de alarmes resolvidos junto com os ativos, o que
-        # causaria criação de alertas 'ativo' com datas antigas no nosso sistema.
+        # Filtra na origem: ignora alarmes já resolvidos pelo Solis.
+        # Critério duplo porque o campo state é inconsistente na API Solis —
+        # o mesmo alarme pode aparecer como state='0' (ativo) ou state='2' (resolvido)
+        # em coletas diferentes. alarmEndTime preenchido é o sinal mais confiável.
         return [
             self._normalizar_alerta(r) for r in registros
-            if str(r.get('state') or '0') == '0'
+            if self._alarme_esta_ativo(r)
         ]
+
+    @staticmethod
+    def _alarme_esta_ativo(r: dict) -> bool:
+        """Retorna True apenas se o alarme está genuinamente ativo no Solis."""
+        # Critério primário: alarmEndTime preenchido indica alarme encerrado
+        end_time = r.get('alarmEndTime')
+        if end_time and int(end_time) > 0:
+            return False
+        # Critério secundário: state != '0' indica resolvido
+        if str(r.get('state') or '0') != '0':
+            return False
+        return True
 
     def _normalizar_usina(self, r: dict) -> DadosUsina:
         return DadosUsina(
