@@ -27,7 +27,7 @@
       "id": 1,
       "title": "Provedor",
       "type": "stat",
-      "gridPos": { "x": 0, "y": 0, "w": 3, "h": 3 },
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 3 },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -54,7 +54,7 @@
       "id": 2,
       "title": "Capacidade Instalada",
       "type": "stat",
-      "gridPos": { "x": 3, "y": 0, "w": 3, "h": 3 },
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 3 },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -82,7 +82,7 @@
       "id": 3,
       "title": "Status Atual",
       "type": "stat",
-      "gridPos": { "x": 6, "y": 0, "w": 3, "h": 3 },
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 3 },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -120,7 +120,7 @@
       "id": 4,
       "title": "Alertas Abertos",
       "type": "stat",
-      "gridPos": { "x": 9, "y": 0, "w": 3, "h": 3 },
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 3 },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -152,7 +152,7 @@
       "id": 5,
       "title": "Potência Atual",
       "type": "stat",
-      "gridPos": { "x": 12, "y": 0, "w": 3, "h": 3 },
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 3 },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -180,7 +180,7 @@
       "id": 6,
       "title": "Energia Hoje",
       "type": "stat",
-      "gridPos": { "x": 15, "y": 0, "w": 3, "h": 3 },
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 3 },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -199,44 +199,6 @@
         {
           "datasource": { "uid": "postgres-firmasolar" },
           "rawSql": "SELECT s.energia_hoje_kwh FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}' ORDER BY s.coletado_em DESC LIMIT 1",
-          "format": "table",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 18,
-      "title": "Último Dado Recebido",
-      "type": "stat",
-      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 3 },
-      "description": "Tempo desde o último snapshot coletado. Verde = < 1h, Amarelo = < 1 dia, Laranja = < 7 dias, Vermelho = offline há muito tempo",
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "text": { "valueSize": 24 }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "noValue": "—",
-          "unit": "dtdurations",
-          "decimals": 0,
-          "color": { "mode": "thresholds" },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green",       "value": null },
-              { "color": "yellow",      "value": 3600 },
-              { "color": "orange",      "value": 86400 },
-              { "color": "dark-red",    "value": 604800 }
-            ]
-          }
-        }
-      },
-      "targets": [
-        {
-          "datasource": { "uid": "postgres-firmasolar" },
-          "rawSql": "SELECT EXTRACT(EPOCH FROM (NOW() - MAX(s.coletado_em)))::bigint AS \"Último Dado\" FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}'",
           "format": "table",
           "refId": "A"
         }
