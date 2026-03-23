@@ -13,6 +13,11 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_SECURITY_DISABLE_GRAVATAR=true
+      # Abre direto no dashboard de monitoramento ao logar (evita tela de boas-vindas)
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/principal/monitoramento_alertas.json
+      # Viewer não pode editar nem criar dashboards
+      - GF_USERS_DEFAULT_THEME=dark
+      - GF_AUTH_ANONYMOUS_ENABLED=false
       # Credenciais do PostgreSQL — repassadas para o datasource via provisioning
       # DB_HOST aponta para o serviço db do backend via rede compartilhada firmasolar_obs
       - DB_HOST=backend_monitoramento-db-1
