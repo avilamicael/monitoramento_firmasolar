@@ -25,6 +25,12 @@ TIPOS_COM_KPI: frozenset[int] = frozenset({
     38,  # SUN2000 residencial / SmartLogger com inversor integrado
 })
 
+# Pausa obrigatória entre chamadas consecutivas à mesma sessão.
+# A FusionSolar retorna failCode=407 (ACCESS_FREQUENCY_IS_TOO_HIGH) quando múltiplas
+# chamadas são feitas em sequência rápida dentro de uma coleta, mesmo que o intervalo
+# entre ciclos de coleta seja respeitado. 5s é o mínimo documentado pela Huawei.
+_PAUSA_ENTRE_CHAMADAS = 5
+
 
 def _post(path: str, body: dict, sessao: requests.Session, usuario: str, system_code: str) -> dict:
     """
@@ -108,6 +114,7 @@ def listar_usinas(sessao: requests.Session, usuario: str, system_code: str) -> l
         return []
 
     codigos = ','.join(u.get('stationCode', '') for u in usinas if u.get('stationCode'))
+    time.sleep(_PAUSA_ENTRE_CHAMADAS)
     try:
         kpi_dados = _post('/getStationRealKpi', {'stationCodes': codigos}, sessao, usuario, system_code)
         kpi_por_codigo = {
@@ -149,6 +156,7 @@ def listar_todos_inversores(
     # 1. Busca todos os dispositivos em lote (uma única chamada)
     batch_code = ','.join(codigos_usinas)
     logger.info('FusionSolar: chamando /getDevList com %d stations...', len(codigos_usinas))
+    time.sleep(_PAUSA_ENTRE_CHAMADAS)
     try:
         dados = _post('/getDevList', {'stationCodes': batch_code}, sessao, usuario, system_code)
     except ProvedorErroRateLimit:
@@ -187,6 +195,7 @@ def listar_todos_inversores(
         ids = [str(d.get('id')) for d in devs if d.get('id')]
         if not ids:
             continue
+        time.sleep(_PAUSA_ENTRE_CHAMADAS)
         try:
             kpi_resp = _post(
                 '/getDevRealKpi',

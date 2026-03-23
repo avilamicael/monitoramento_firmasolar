@@ -2,7 +2,7 @@
   "title": "Detalhe da Usina",
   "uid": "detalhe-usina",
   "schemaVersion": 38,
-  "version": 2,
+  "version": 3,
   "timezone": "America/Sao_Paulo",
   "refresh": "5m",
   "time": { "from": "now-7d", "to": "now" },
@@ -451,6 +451,128 @@
         {
           "datasource": { "uid": "postgres-firmasolar" },
           "rawSql": "SELECT i.numero_serie AS \"Serial\", i.modelo AS \"Modelo\", COALESCE(s.estado, '—') AS \"Estado\", COALESCE(s.pac_kw, 0) AS \"Potência (kW)\", COALESCE(s.energia_hoje_kwh, 0) AS \"Energia Hoje (kWh)\", s.coletado_em AS \"Último Dado\" FROM usinas_inversor i JOIN usinas_usina u ON i.usina_id = u.id LEFT JOIN usinas_snapshotinversor s ON i.ultimo_snapshot_id = s.id WHERE u.nome = '${usina}' ORDER BY i.numero_serie",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Análise de Geração",
+      "type": "row",
+      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 15,
+      "title": "Geração Diária (kWh/dia)",
+      "type": "barchart",
+      "gridPos": { "x": 0, "y": 33, "w": 12, "h": 8 },
+      "description": "Máximo de energia_hoje_kwh por dia — dias com valor muito baixo ou zero indicam paralisação total",
+      "options": {
+        "barWidth": 0.7,
+        "groupWidth": 0.7,
+        "fillOpacity": 80,
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" },
+        "xTickLabelRotation": -30
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "unit": "kwatth",
+          "decimals": 1,
+          "min": 0,
+          "custom": { "fillOpacity": 80 }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT DATE_TRUNC('day', s.coletado_em AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AS \"time\", MAX(s.energia_hoje_kwh) AS \"Geração (kWh)\" FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}' AND $__timeFilter(s.coletado_em) GROUP BY 1 ORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Potência como % da Capacidade Instalada",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 33, "w": 12, "h": 8 },
+      "description": "Queda abrupta para 0% indica falha forçada; queda gradual ao entardecer é comportamento normal",
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "yellow" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "percent",
+          "decimals": 1,
+          "min": 0,
+          "max": 120,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "dark-red", "value": 0.1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT $__timeGroupAlias(s.coletado_em, '10m'), CASE WHEN MAX(u.capacidade_kwp) > 0 THEN ROUND((AVG(s.potencia_kw) / MAX(u.capacidade_kwp) * 100)::numeric, 1) ELSE 0 END AS \"% da Capacidade\" FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}' AND $__timeFilter(s.coletado_em) GROUP BY 1 ORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Estado dos Inversores ao Longo do Tempo",
+      "type": "state-timeline",
+      "gridPos": { "x": 0, "y": 41, "w": 24, "h": 8 },
+      "description": "Cada linha é um inversor. Offline repentino de todos = falha sistêmica; offline sequencial = falha individual",
+      "options": {
+        "mergeValues": true,
+        "showValue": "auto",
+        "alignValue": "left",
+        "rowHeight": 0.85,
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed" },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "normal":  { "text": "Normal",  "color": "green",  "index": 0 },
+                "aviso":   { "text": "Aviso",   "color": "yellow", "index": 1 },
+                "offline": { "text": "Offline", "color": "red",    "index": 2 }
+              }
+            }
+          ],
+          "custom": { "fillOpacity": 90, "lineWidth": 0 }
+        }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": ["Inversor"],
+            "keepFields": false
+          }
+        }
+      ],
+      "targets": [
+        {
+          "datasource": { "uid": "postgres-firmasolar" },
+          "rawSql": "SELECT s.coletado_em AS \"time\", i.numero_serie AS \"Inversor\", s.estado AS \"Estado\" FROM usinas_snapshotinversor s JOIN usinas_inversor i ON s.inversor_id = i.id JOIN usinas_usina u ON i.usina_id = u.id WHERE u.nome = '${usina}' AND $__timeFilter(s.coletado_em) ORDER BY 1, 2",
           "format": "table",
           "refId": "A"
         }
