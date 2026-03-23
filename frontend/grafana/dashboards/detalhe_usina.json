@@ -38,24 +38,13 @@
       "fieldConfig": {
         "defaults": {
           "noValue": "—",
-          "color": { "mode": "fixed", "fixedColor": "blue" },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "1": { "text": "Hoymiles",    "color": "blue",  "index": 0 },
-                "2": { "text": "Solis",       "color": "blue",  "index": 1 },
-                "3": { "text": "FusionSolar", "color": "blue",  "index": 2 },
-                "0": { "text": "Desconhecido","color": "gray",  "index": 3 }
-              }
-            }
-          ]
+          "color": { "mode": "fixed", "fixedColor": "blue" }
         }
       },
       "targets": [
         {
           "datasource": { "uid": "postgres-firmasolar" },
-          "rawSql": "SELECT CASE provedor WHEN 'hoymiles' THEN 1 WHEN 'solis' THEN 2 WHEN 'fusionsolar' THEN 3 ELSE 0 END AS \"Provedor\" FROM usinas_usina WHERE nome = '${usina}'",
+          "rawSql": "SELECT INITCAP(provedor) AS \"Provedor\" FROM usinas_usina WHERE nome = '${usina}'",
           "format": "table",
           "refId": "A"
         }
@@ -108,11 +97,10 @@
             {
               "type": "value",
               "options": {
-                "1": { "text": "Normal",    "color": "green",  "index": 0 },
-                "2": { "text": "Offline",   "color": "red",    "index": 1 },
-                "3": { "text": "Aviso",     "color": "yellow", "index": 2 },
-                "4": { "text": "Construção","color": "gray",   "index": 3 },
-                "0": { "text": "Sem dados", "color": "gray",   "index": 4 }
+                "normal":     { "text": "Normal",    "color": "green",  "index": 0 },
+                "offline":    { "text": "Offline",   "color": "red",    "index": 1 },
+                "aviso":      { "text": "Aviso",     "color": "yellow", "index": 2 },
+                "construcao": { "text": "Construção","color": "gray",   "index": 3 }
               }
             }
           ]
@@ -121,7 +109,7 @@
       "targets": [
         {
           "datasource": { "uid": "postgres-firmasolar" },
-          "rawSql": "SELECT CASE s.status WHEN 'normal' THEN 1 WHEN 'offline' THEN 2 WHEN 'aviso' THEN 3 WHEN 'construcao' THEN 4 ELSE 0 END AS \"Status\" FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}' ORDER BY s.coletado_em DESC LIMIT 1",
+          "rawSql": "SELECT s.status AS \"Status\" FROM usinas_snapshotusina s JOIN usinas_usina u ON s.usina_id = u.id WHERE u.nome = '${usina}' ORDER BY s.coletado_em DESC LIMIT 1",
           "format": "table",
           "refId": "A"
         }
