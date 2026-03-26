@@ -19,6 +19,7 @@ from provedores.base import DadosUsina, DadosInversor, DadosAlerta
 from usinas.models import Usina, SnapshotUsina, Inversor, SnapshotInversor
 from alertas.models import Alerta, CatalogoAlarme, RegraSupressao
 from alertas.categorizacao import inferir_categoria
+from alertas.supressao_inteligente import e_desligamento_gradual
 
 logger = logging.getLogger(__name__)
 
@@ -209,6 +210,22 @@ class ServicoIngestao:
                 # Nível efetivo: usa o do catálogo se foi sobrescrito pelo operador
                 if catalogo.nivel_sobrescrito:
                     nivel_efetivo = catalogo.nivel_padrao
+
+                # Supressão inteligente: desligamento gradual (pôr do sol normal)
+                # Só aplica para sistema_desligado sem alerta já aberto no banco.
+                # Se já existe alerta aberto (shutdown real anterior), processa normalmente.
+                if catalogo.tipo == 'sistema_desligado':
+                    ja_aberto = Alerta.objects.filter(
+                        usina=usina,
+                        id_alerta_provedor=dados.id_alerta_provedor,
+                        estado__in=('ativo', 'em_atendimento'),
+                    ).exists()
+                    if not ja_aberto and e_desligamento_gradual(usina):
+                        logger.debug(
+                            '%s: %s — suprimido (desligamento gradual)',
+                            provedor, usina.nome,
+                        )
+                        continue
 
             ids_ativos_provedor.add(dados.id_alerta_provedor)
 
