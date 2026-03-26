@@ -61,11 +61,11 @@ class FusionSolarAdaptador(AdaptadorProvedor):
             # FusionSolar tem limite rígido de frequência — 1 req a cada 5s por usina
             limite_requisicoes=1,
             janela_segundos=5,
-            # Intervalo mínimo entre coletas: 15 min conforme documentação oficial da API.
-            # O valor anterior (2100s/35min) foi ajustado empiricamente por rate limit do usuário
-            # compartilhado. Com usuário dedicado (1 API por usuário, conforme doc Huawei),
-            # o intervalo de 900s é suficiente.
-            min_intervalo_coleta_segundos=900,
+            # Intervalo mínimo entre coletas: 30 min (1800s) definido empiricamente.
+            # A API rejeita com failCode=407 chamadas com menos de ~30 min de intervalo.
+            # Tentar com 15 min (900s) acionava retries + backoff de 1800s → ciclo de 60 min.
+            # Com 1800s direto, a coleta ocorre a cada 30 min sem backoff (48 coletas/dia).
+            min_intervalo_coleta_segundos=1800,
         )
 
     def _garantir_autenticado(self):

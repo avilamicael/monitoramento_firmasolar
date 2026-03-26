@@ -10,9 +10,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import redis
 from celery import shared_task
-from django.conf import settings
 from django.db import transaction
 
 from provedores.models import CredencialProvedor, CacheTokenProvedor
@@ -24,13 +22,6 @@ from coleta.ingestao import ServicoIngestao
 from coleta.models import LogColeta
 
 logger = logging.getLogger(__name__)
-
-_CHAVE_BACKOFF = 'coleta:backoff:{}'
-_TTL_BACKOFF_SEGUNDOS = 1800  # 30 minutos
-
-
-def _get_redis():
-    return redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 @shared_task
@@ -86,19 +77,6 @@ def coletar_dados_provedor(self, credencial_id: str):
         pass
 
     adaptador = get_adaptador(credencial.provedor, credenciais_dict)
-
-    # Verificar backoff automático — ativado quando max_retries por rate limit é esgotado
-    chave_backoff = _CHAVE_BACKOFF.format(credencial_id)
-    try:
-        ttl_restante = _get_redis().ttl(chave_backoff)
-        if ttl_restante > 0:
-            logger.info(
-                '%s: coleta em backoff por rate limit — aguardando %ds para próxima tentativa',
-                credencial.provedor, ttl_restante,
-            )
-            return
-    except Exception:
-        pass  # falha no Redis não deve bloquear a coleta
 
     # Verificar intervalo mínimo entre coletas (provedores com rate limit rígido, ex: FusionSolar)
     min_intervalo = adaptador.capacidades.min_intervalo_coleta_segundos
@@ -215,11 +193,11 @@ def coletar_dados_provedor(self, credencial_id: str):
         )
 
     except ProvedorErroRateLimit as exc:
-        logger.warning('%s: rate limit atingido — tentativa %d/%d',
-                       credencial.provedor, self.request.retries + 1, self.max_retries)
+        logger.warning('%s: rate limit atingido — aguardando próximo ciclo do Beat',
+                       credencial.provedor)
         # Persistir token atualizado mesmo em falha por rate limit.
         # O adaptador pode ter feito re-login durante a tentativa (para lidar com 305).
-        # Se o token novo não for salvo, o próximo retry carrega o token expirado do banco
+        # Se o token novo não for salvo, o próximo ciclo carrega o token expirado do banco
         # e repete o ciclo: 305 → re-login → 407, multiplicando os logins desnecessários.
         try:
             token_novo = adaptador.obter_cache_token()
@@ -229,20 +207,16 @@ def coletar_dados_provedor(self, credencial_id: str):
                     defaults={'dados_token_enc': criptografar_credenciais(token_novo)},
                 )
         except Exception:
-            pass  # falha ao salvar token não deve bloquear o retry
-
-        if self.request.retries >= self.max_retries:
-            # Todos os retries esgotados — ativar backoff para evitar hammering contínuo na API
-            try:
-                _get_redis().setex(_CHAVE_BACKOFF.format(credencial_id), _TTL_BACKOFF_SEGUNDOS, '1')
-                logger.warning(
-                    '%s: max_retries esgotado por rate limit — backoff de %ds ativado',
-                    credencial.provedor, _TTL_BACKOFF_SEGUNDOS,
-                )
-            except Exception:
-                pass
-
-        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+            pass  # falha ao salvar token não deve bloquear o próximo ciclo
+        # Não retentar: provedores com min_intervalo (ex: FusionSolar) têm rate limit estrutural.
+        # Retries rápidos só queimam quota e ativam backoffs desnecessários.
+        # O próximo ciclo do Beat verificará o min_intervalo e tentará no momento correto.
+        LogColeta.objects.create(
+            credencial=credencial,
+            status='erro',
+            detalhe_erro=str(exc),
+            duracao_ms=int((time.time() - inicio) * 1000),
+        )
 
     except Exception as exc:
         logger.error('%s: erro inesperado — %s', credencial.provedor, exc, exc_info=True)
