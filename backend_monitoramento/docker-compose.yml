@@ -15,8 +15,11 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - default
-      - firmasolar_obs
+      default:
+        # Alias 'postgres' para que a Evolution API (Prisma) encontre o banco
+        aliases:
+          - postgres
+      firmasolar_obs:
     restart: unless-stopped
 
   redis:
@@ -89,7 +92,7 @@ services:
       # Banco de dados: usa o PostgreSQL compartilhado com database separado
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_URL=postgresql://${DB_USUARIO}:${DB_SENHA}@db:5432/evolution
+      - DATABASE_URL=postgresql://${DB_USUARIO}:${DB_SENHA}@postgres:5432/evolution
       - DATABASE_CONNECTION_CLIENT_NAME=evolution-api
       # Armazena sessão/QR na pasta de volumes (backup físico)
       - DATABASE_SAVE_DATA_INSTANCE=true
