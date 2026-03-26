@@ -90,8 +90,11 @@ services:
       - SERVER_PORT=8080
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${WHATSAPP_EVOLUTION_TOKEN}
-      # Banco: usa o PostgreSQL compartilhado com database separado 'evolution'
+      # Banco: usa o PostgreSQL compartilhado com database separado 'evolution'.
+      # DATABASE_CONNECTION_URI é o var lido pelo schema Prisma (url = env("DATABASE_CONNECTION_URI")).
+      # DATABASE_URL é exibido no log do deploy.sh mas não é o que o Prisma usa.
       - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://${DB_USUARIO}:${DB_SENHA}@db:5432/evolution?schema=public
       - DATABASE_URL=postgresql://${DB_USUARIO}:${DB_SENHA}@db:5432/evolution
       - DATABASE_CONNECTION_CLIENT_NAME=evolution-api
       # Não salvar histórico de mensagens — só sessão/instância
