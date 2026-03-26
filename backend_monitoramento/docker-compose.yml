@@ -86,10 +86,23 @@ services:
     environment:
       - SERVER_PORT=8080
       - AUTHENTICATION_API_KEY=${WHATSAPP_EVOLUTION_TOKEN}
-      - DATABASE_ENABLED=false
+      # Banco de dados: usa o PostgreSQL compartilhado com database separado
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_URL=postgresql://${DB_USUARIO}:${DB_SENHA}@db:5432/evolution
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution-api
+      # Armazena sessão/QR na pasta de volumes (backup físico)
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=false
+      - DATABASE_SAVE_MESSAGE_UPDATE=false
+      - DATABASE_SAVE_DATA_CONTACTS=false
+      - DATABASE_SAVE_DATA_CHATS=false
       - LOG_LEVEL=ERROR
       - LOG_COLOR=false
       - DEL_INSTANCE=false
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
 networks:
