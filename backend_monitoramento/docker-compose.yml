@@ -75,7 +75,7 @@ services:
     restart: unless-stopped
 
   evolution-api:
-    image: atendai/evolution-api:latest
+    image: evoapicloud/evolution-api:latest
     volumes:
       - ../data/evolution:/evolution/instances
     ports:
