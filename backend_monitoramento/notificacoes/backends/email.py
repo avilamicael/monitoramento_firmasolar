@@ -1,5 +1,6 @@
 import logging
 from django.conf import settings
+from django.utils import timezone as dj_timezone
 from notificacoes.base import BackendNotificacao, DadosNotificacao
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,8 @@ class EmailBackend(BackendNotificacao):
             linhas.append(f'Equipamento: {dados.equipamento_sn}')
         if dados.sugestao:
             linhas.append(f'Sugestão: {dados.sugestao}')
-        linhas.append(f'Início: {dados.inicio:%d/%m/%Y %H:%M}')
+        inicio_local = dj_timezone.localtime(dados.inicio)
+        linhas.append(f'Início: {inicio_local:%d/%m/%Y %H:%M}')
         linhas.append('\nAcesse o painel para mais detalhes.')
 
         corpo = '\n'.join(linhas)

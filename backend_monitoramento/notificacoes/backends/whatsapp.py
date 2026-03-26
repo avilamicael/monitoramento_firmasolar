@@ -1,6 +1,7 @@
 import logging
 import requests
 from django.conf import settings
+from django.utils import timezone as dj_timezone
 from notificacoes.base import BackendNotificacao, DadosNotificacao
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,8 @@ class WhatsAppBackend(BackendNotificacao):
             linhas.append(f'*Equipamento:* {dados.equipamento_sn}')
         if dados.sugestao:
             linhas.append(f'*Sugestão:* {dados.sugestao}')
-        linhas.append(f'*Início:* {dados.inicio:%d/%m/%Y %H:%M}')
+        inicio_local = dj_timezone.localtime(dados.inicio)
+        linhas.append(f'*Início:* {inicio_local:%d/%m/%Y %H:%M}')
         return '\n'.join(linhas)
 
     def _enviar_meta(self, mensagem: str, destinatario: str, id_alerta: str) -> None:
