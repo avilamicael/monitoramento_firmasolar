@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Limiar: se a última potência registrada antes do desligamento estiver
 # abaixo desse percentual da capacidade instalada, considera-se gradual.
-_LIMIAR_PCT_CAPACIDADE = 0.15   # 15% da capacidade instalada (kWp)
+_LIMIAR_PCT_CAPACIDADE = 0.05   # 5% da capacidade instalada (kWp)
 _LIMIAR_ABS_KW = 1.0            # mínimo absoluto em kW (para usinas sem capacidade cadastrada)
 _JANELA_HORAS = 24              # janela de busca de snapshots (horas)
 

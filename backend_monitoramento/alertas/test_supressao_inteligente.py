@@ -61,7 +61,7 @@ class TestEDesligamentoGradual:
 
     def test_gradual_retorna_true(self, usina):
         """Último snapshot com pot abaixo do limiar → desligamento gradual."""
-        # Limiar para 7.38 kWp = max(1.0, 7.38 * 0.15) = 1.107 kW
+        # Limiar para 7.38 kWp = max(1.0, 7.38 * 0.05) = 1.0 kW (mínimo absoluto)
         _cria_snapshot(usina, horas_atras=2.5, potencia_kw=0.18)
         _cria_snapshot(usina, horas_atras=2.0, potencia_kw=0.10)
         _cria_snapshot(usina, horas_atras=1.5, potencia_kw=0.03)  # último com pot
@@ -72,6 +72,7 @@ class TestEDesligamentoGradual:
 
     def test_abrupto_retorna_false(self, usina):
         """Último snapshot com pot acima do limiar → desligamento abrupto."""
+        # Limiar para 7.38 kWp = max(1.0, 7.38 * 0.05) = 1.0 kW
         _cria_snapshot(usina, horas_atras=2.0, potencia_kw=4.50)
         _cria_snapshot(usina, horas_atras=1.5, potencia_kw=5.20)
         _cria_snapshot(usina, horas_atras=1.0, potencia_kw=5.10)  # último com pot
@@ -96,8 +97,8 @@ class TestEDesligamentoGradual:
 
     def test_exatamente_no_limiar_considera_gradual(self, usina):
         """Pot exatamente igual ao limiar deve ser considerado gradual (<=)."""
-        # Limiar para 7.38 kWp = 1.107 kW
-        _cria_snapshot(usina, horas_atras=1.0, potencia_kw=1.107)
+        # Limiar para 7.38 kWp = max(1.0, 7.38 * 0.05) = 1.0 kW (mínimo absoluto domina)
+        _cria_snapshot(usina, horas_atras=1.0, potencia_kw=1.0)
         _cria_snapshot(usina, horas_atras=0.5, potencia_kw=0.00)
 
         assert e_desligamento_gradual(usina) is True
