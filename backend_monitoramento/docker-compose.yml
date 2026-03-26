@@ -15,11 +15,8 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      default:
-        # Alias 'postgres' para que a Evolution API (Prisma) encontre o banco
-        aliases:
-          - postgres
-      firmasolar_obs:
+      - default
+      - firmasolar_obs
     restart: unless-stopped
 
   redis:
@@ -89,30 +86,18 @@ services:
     environment:
       - SERVER_PORT=8080
       - AUTHENTICATION_API_KEY=${WHATSAPP_EVOLUTION_TOKEN}
-      # Banco de dados: usa o PostgreSQL compartilhado com database separado.
-      # Evolution API v2 constrói o DATABASE_URL internamente via variáveis individuais —
-      # DATABASE_URL sozinho não é suficiente para o Prisma.
-      - DATABASE_ENABLED=true
+      # DATABASE_ENABLED=false usa armazenamento em arquivo (instances/).
+      # DATABASE_PROVIDER precisa ser um valor válido para passar a validação interna.
+      - DATABASE_ENABLED=false
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_URL=postgresql://${DB_USUARIO}:${DB_SENHA}@postgres:5432/evolution
-      - DATABASE_HOST=postgres
-      - DATABASE_PORT=5432
-      - DATABASE_USER=${DB_USUARIO}
-      - DATABASE_PASSWORD=${DB_SENHA}
-      - DATABASE_NAME=evolution
-      - DATABASE_CONNECTION_CLIENT_NAME=evolution-api
-      # Armazena apenas dados de instância (sessão/QR) — sem histórico de mensagens
-      - DATABASE_SAVE_DATA_INSTANCE=true
-      - DATABASE_SAVE_DATA_NEW_MESSAGE=false
-      - DATABASE_SAVE_MESSAGE_UPDATE=false
-      - DATABASE_SAVE_DATA_CONTACTS=false
-      - DATABASE_SAVE_DATA_CHATS=false
+      # Armazena sessão/QR em arquivo (persistido pelo volume /evolution/instances)
+      - STORE_MESSAGES=false
+      - STORE_MESSAGE_UP=false
+      - STORE_CONTACTS=false
+      - STORE_CHATS=false
       - LOG_LEVEL=ERROR
       - LOG_COLOR=false
       - DEL_INSTANCE=false
-    depends_on:
-      db:
-        condition: service_healthy
     restart: unless-stopped
 
 networks:
