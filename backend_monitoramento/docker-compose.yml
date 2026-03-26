@@ -75,9 +75,7 @@ services:
     restart: unless-stopped
 
   evolution-api:
-    # v1.x: armazenamento em arquivo nativo, sem banco de dados obrigatório.
-    # v2.x exige PostgreSQL na inicialização (migrations hardcoded no deploy.sh).
-    image: atendai/evolution-api:1.8.2
+    image: atendai/evolution-api:latest
     volumes:
       - ../data/evolution:/evolution/instances
     ports:
@@ -86,17 +84,29 @@ services:
       # Depois: http://localhost:8080
       - "127.0.0.1:8080:8080"
     environment:
+      # DOCKER_ENV=true pula o carregamento do .env interno da imagem,
+      # deixando os vars do Docker tomarem precedência (incluindo DATABASE_URL).
+      - DOCKER_ENV=true
       - SERVER_PORT=8080
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${WHATSAPP_EVOLUTION_TOKEN}
-      - STORE_MESSAGES=false
-      - STORE_MESSAGE_UP=false
-      - STORE_CONTACTS=false
-      - STORE_CHATS=false
-      - QRCODE_LIMIT=30
+      # Banco: usa o PostgreSQL compartilhado com database separado 'evolution'
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_URL=postgresql://${DB_USUARIO}:${DB_SENHA}@db:5432/evolution
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution-api
+      # Não salvar histórico de mensagens — só sessão/instância
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=false
+      - DATABASE_SAVE_MESSAGE_UPDATE=false
+      - DATABASE_SAVE_DATA_CONTACTS=false
+      - DATABASE_SAVE_DATA_CHATS=false
       - LOG_LEVEL=ERROR
       - LOG_COLOR=false
       - DEL_INSTANCE=false
+      - QRCODE_LIMIT=30
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
 networks:
