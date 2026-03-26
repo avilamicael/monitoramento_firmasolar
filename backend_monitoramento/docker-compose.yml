@@ -89,12 +89,19 @@ services:
     environment:
       - SERVER_PORT=8080
       - AUTHENTICATION_API_KEY=${WHATSAPP_EVOLUTION_TOKEN}
-      # Banco de dados: usa o PostgreSQL compartilhado com database separado
+      # Banco de dados: usa o PostgreSQL compartilhado com database separado.
+      # Evolution API v2 constrói o DATABASE_URL internamente via variáveis individuais —
+      # DATABASE_URL sozinho não é suficiente para o Prisma.
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_URL=postgresql://${DB_USUARIO}:${DB_SENHA}@postgres:5432/evolution
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${DB_USUARIO}
+      - DATABASE_PASSWORD=${DB_SENHA}
+      - DATABASE_NAME=evolution
       - DATABASE_CONNECTION_CLIENT_NAME=evolution-api
-      # Armazena sessão/QR na pasta de volumes (backup físico)
+      # Armazena apenas dados de instância (sessão/QR) — sem histórico de mensagens
       - DATABASE_SAVE_DATA_INSTANCE=true
       - DATABASE_SAVE_DATA_NEW_MESSAGE=false
       - DATABASE_SAVE_MESSAGE_UPDATE=false
