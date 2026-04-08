@@ -51,7 +51,11 @@
 5. Requisição CORS de origem não configurada é bloqueada; origem configurada passa
 6. `GarantiaUsina` existe no banco com todos os campos; `data_fim` e `ativa` calculados corretamente
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
+- [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
 
 ---
 
@@ -85,7 +89,11 @@
 5. `PATCH /api/alertas/{id}/` atualiza estado e anotações; campo `com_garantia` reflete situação real da usina no momento
 6. Todos os endpoints retornam 401 sem token válido — sem exceções
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
+- [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
 
 ---
 
@@ -115,7 +123,11 @@
 3. `GET /api/analytics/mapa/` retorna todas as usinas com coordenadas válidas; usinas sem `lat`/`lng` aparecem com campos nulos (não omitidas)
 4. Os três endpoints rejeitam requisições sem token com 401
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
+- [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
 
 ---
 
@@ -147,7 +159,11 @@
 4. Refresh expirado ou inválido resulta em logout automático e redirecionamento para `/login`
 5. Sidebar exibe os quatro destinos de navegação; header exibe nome do usuário autenticado
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
+- [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
 **UI hint**: yes
 
 ---
@@ -178,7 +194,11 @@
 4. Garantias vencendo em menos de 30 dias exibem indicador vermelho na listagem
 5. Formulário de garantia cria/substitui via `PUT` e a listagem de garantias reflete o estado atualizado
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
+- [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
 **UI hint**: yes
 
 ---
@@ -210,7 +230,11 @@
 4. Administrador filtra alertas por estado e visualiza claramente quais têm usina com garantia ativa
 5. Atualização de estado e anotação de alerta persiste via API e a listagem reflete o novo estado imediatamente
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
+- [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
 **UI hint**: yes
 
 ---
