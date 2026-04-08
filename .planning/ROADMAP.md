@@ -54,7 +54,7 @@
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
+- [x] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
 - [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
 
 ---
