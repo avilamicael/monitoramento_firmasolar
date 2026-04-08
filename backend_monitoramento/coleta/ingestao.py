@@ -116,6 +116,12 @@ class ServicoIngestao:
                 'energia_total_kwh': dados.energia_total_kwh,
                 'soc_bateria': dados.soc_bateria,
                 'strings_mppt': dados.strings_mppt,
+                'tensao_ac_v': dados.tensao_ac_v,
+                'corrente_ac_a': dados.corrente_ac_a,
+                'tensao_dc_v': dados.tensao_dc_v,
+                'corrente_dc_a': dados.corrente_dc_a,
+                'frequencia_hz': dados.frequencia_hz,
+                'temperatura_c': dados.temperatura_c,
                 'payload_bruto': dados.payload_bruto,
             },
         )

@@ -47,6 +47,12 @@ class DadosInversor:
     data_medicao: datetime
     soc_bateria: float | None = None   # % carga da bateria (quando há armazenamento)
     strings_mppt: dict = field(default_factory=dict)  # ex: {'string1': 120.5, 'string2': 118.2}
+    tensao_ac_v: float | None = None    # VAC — tensão AC fase 1 (V)
+    corrente_ac_a: float | None = None  # IAC — corrente AC fase 1 (A)
+    tensao_dc_v: float | None = None    # VDC — tensão DC string 1 (V)
+    corrente_dc_a: float | None = None  # IDC — corrente DC string 1 (A)
+    frequencia_hz: float | None = None  # Frequência da rede (Hz)
+    temperatura_c: float | None = None  # Temperatura do inversor (°C)
     payload_bruto: dict = field(default_factory=dict)
 
 

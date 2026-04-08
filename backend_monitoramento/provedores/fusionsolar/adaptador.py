@@ -155,6 +155,15 @@ class FusionSolarAdaptador(AdaptadorProvedor):
         else:
             estado = 'normal' if r.get('devStatus') == 1 else 'offline'
 
+        # FusionSolar retorna tensão AC por fase (a_u = fase A) e corrente (a_i = fase A).
+        # Para DC: pv1_u (tensão string 1) e pv1_i (corrente string 1).
+        # Inversores trifásicos também têm b_u/c_u, mas usamos fase A como referência.
+        tensao_ac = _para_float(kpi.get('a_u') or kpi.get('ab_u')) or None
+        corrente_ac = _para_float(kpi.get('a_i')) or None
+        tensao_dc = _para_float(kpi.get('pv1_u')) or None
+        corrente_dc = _para_float(kpi.get('pv1_i')) or None
+        frequencia = _para_float(kpi.get('elec_freq')) or None
+        temperatura = _para_float(kpi.get('temperature')) or None
         return DadosInversor(
             id_inversor_provedor=dev_id,
             id_usina_provedor=id_usina,
@@ -168,6 +177,12 @@ class FusionSolarAdaptador(AdaptadorProvedor):
             energia_total_kwh=_para_float(kpi.get('total_cap') or kpi.get('mppt_total_cap')),
             soc_bateria=None,
             strings_mppt=strings_mppt,
+            tensao_ac_v=tensao_ac,
+            corrente_ac_a=corrente_ac,
+            tensao_dc_v=tensao_dc,
+            corrente_dc_a=corrente_dc,
+            frequencia_hz=frequencia,
+            temperatura_c=temperatura,
             data_medicao=datetime.now(timezone.utc),
             payload_bruto=r,
         )

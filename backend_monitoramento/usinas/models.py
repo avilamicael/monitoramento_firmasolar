@@ -147,6 +147,12 @@ class SnapshotInversor(models.Model):
     soc_bateria = models.FloatField(null=True, blank=True)
     # Ex: {"string1": 120.5, "string2": 118.2}
     strings_mppt = models.JSONField(default=dict)
+    tensao_ac_v = models.FloatField(null=True, blank=True, verbose_name='Tensão AC (V)')
+    corrente_ac_a = models.FloatField(null=True, blank=True, verbose_name='Corrente AC (A)')
+    tensao_dc_v = models.FloatField(null=True, blank=True, verbose_name='Tensão DC (V)')
+    corrente_dc_a = models.FloatField(null=True, blank=True, verbose_name='Corrente DC (A)')
+    frequencia_hz = models.FloatField(null=True, blank=True, verbose_name='Frequência (Hz)')
+    temperatura_c = models.FloatField(null=True, blank=True, verbose_name='Temperatura (°C)')
     payload_bruto = models.JSONField(default=dict)
 
     class Meta:

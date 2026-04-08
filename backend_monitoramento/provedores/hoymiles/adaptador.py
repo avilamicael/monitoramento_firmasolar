@@ -9,7 +9,7 @@ import requests
 from provedores.base import AdaptadorProvedor, CapacidadesProvedor, DadosUsina, DadosInversor, DadosAlerta
 from provedores.excecoes import ProvedorErro
 from .autenticacao import fazer_login, _HEADERS_BASE
-from .consultas import listar_usinas, listar_inversores, listar_alertas
+from .consultas import listar_usinas, listar_inversores, listar_alertas, baixar_dados_dia
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,8 @@ class HoymilesAdaptador(AdaptadorProvedor):
     def buscar_inversores(self, id_usina_provedor: str) -> list[DadosInversor]:
         self._garantir_autenticado()
         registros = listar_inversores(id_usina_provedor, self._sessao, self._token)
-        return [self._normalizar_inversor(r, id_usina_provedor) for r in registros]
+        dados_dia = baixar_dados_dia(id_usina_provedor, self._sessao, self._token)
+        return [self._normalizar_inversor(r, id_usina_provedor, dados_dia) for r in registros]
 
     def buscar_alertas(self, id_usina_provedor: str | None = None) -> list[DadosAlerta]:
         self._garantir_autenticado()
@@ -132,20 +133,27 @@ class HoymilesAdaptador(AdaptadorProvedor):
             payload_bruto=r,
         )
 
-    def _normalizar_inversor(self, r: dict, id_usina: str) -> DadosInversor:
+    def _normalizar_inversor(self, r: dict, id_usina: str, dados_dia: dict | None = None) -> DadosInversor:
         sn = r.get('sn') or r.get('dtu_sn') or str(r.get('id', ''))
         conectado = (r.get('warn_data') or {}).get('connect', False)
+        micro_id = r.get('id')
+        eletrico = (dados_dia or {}).get(micro_id, {})
         return DadosInversor(
-            id_inversor_provedor=str(r.get('id', sn)),
+            id_inversor_provedor=str(micro_id or sn),
             id_usina_provedor=id_usina,
             numero_serie=sn,
-            modelo=r.get('model') or f"tipo-{r.get('type', '?')}",
+            modelo=r.get('model') or r.get('model_no') or f"tipo-{r.get('type', '?')}",
             estado='normal' if conectado else 'offline',
-            pac_kw=0.0,
-            energia_hoje_kwh=0.0,
+            pac_kw=eletrico.get('pac_kw') or 0.0,
+            energia_hoje_kwh=eletrico.get('energia_hoje_kwh') or 0.0,
             energia_total_kwh=0.0,
             soc_bateria=None,
-            strings_mppt={},
+            strings_mppt=eletrico.get('strings_mppt', {}),
+            tensao_dc_v=eletrico.get('tensao_dc_v'),
+            corrente_dc_a=eletrico.get('corrente_dc_a'),
+            tensao_ac_v=eletrico.get('tensao_ca_v'),
+            frequencia_hz=eletrico.get('frequencia_hz'),
+            temperatura_c=eletrico.get('temperatura_c'),
             data_medicao=datetime.now(timezone.utc),
             payload_bruto=r,
         )

@@ -109,6 +109,13 @@ class SolisAdaptador(AdaptadorProvedor):
 
     def _normalizar_inversor(self, r: dict, id_usina: str) -> DadosInversor:
         strings_mppt = {f'string{i}': r[f'pow{i}'] for i in range(1, 33) if r.get(f'pow{i}') is not None}
+        detail = r.get('_detail', {})
+        tensao_ac = _para_float(detail.get('uAc1')) or None
+        corrente_ac = _para_float(detail.get('iAc1')) or None
+        tensao_dc = _para_float(detail.get('uPv1')) or None
+        corrente_dc = _para_float(detail.get('iPv1')) or None
+        frequencia = _para_float(detail.get('fac')) or None
+        temperatura = _para_float(detail.get('inverterTemperature')) or None
         return DadosInversor(
             id_inversor_provedor=str(r.get('id') or r.get('sn', '')),
             id_usina_provedor=id_usina,
@@ -120,6 +127,12 @@ class SolisAdaptador(AdaptadorProvedor):
             energia_total_kwh=_para_float(r.get('etotal')),
             soc_bateria=_para_float(r.get('batteryCapacitySoc')) or None,
             strings_mppt=strings_mppt,
+            tensao_ac_v=tensao_ac,
+            corrente_ac_a=corrente_ac,
+            tensao_dc_v=tensao_dc,
+            corrente_dc_a=corrente_dc,
+            frequencia_hz=frequencia,
+            temperatura_c=temperatura,
             data_medicao=_timestamp_ms_para_datetime(r.get('dataTimestamp')) or datetime.now(timezone.utc),
             payload_bruto=r,
         )

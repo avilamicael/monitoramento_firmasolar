@@ -82,9 +82,15 @@ def listar_usinas(api_key: str, app_secret: str) -> list[dict]:
 
 def listar_inversores(id_usina: str, api_key: str, app_secret: str) -> list[dict]:
     """
-    Retorna os inversores de uma usina.
-    Endpoint: POST /v1/api/inverterList (paginado)
+    Retorna os inversores de uma usina com dados elétricos em tempo real.
+
+    Fluxo:
+        1. POST /v1/api/inverterList  → lista paginada (potência, energia, strings MPPT)
+        2. POST /v1/api/inverterDetail → por inversor (uAc1, iAc1, uPv1, iPv1, fac, temperatura)
+        3. Mescla os dados e retorna
     """
+    import time
+
     resultado = []
     pagina = 1
 
@@ -104,6 +110,19 @@ def listar_inversores(id_usina: str, api_key: str, app_secret: str) -> list[dict
         if not registros or len(resultado) >= total:
             break
         pagina += 1
+
+    # Enriquece cada inversor com dados elétricos do endpoint de detalhe.
+    # Rate limit Solis: 3 req/5s — pausa entre chamadas para não exceder.
+    for inv in resultado:
+        inv_id = str(inv.get('id') or '')
+        if not inv_id:
+            continue
+        try:
+            time.sleep(0.4)  # ~2.5 req/s, dentro do limite de 3/5s
+            detalhe = _post('/v1/api/inverterDetail', {'id': inv_id}, api_key, app_secret)
+            inv['_detail'] = detalhe.get('data') or {}
+        except Exception:
+            inv['_detail'] = {}
 
     return resultado
 
