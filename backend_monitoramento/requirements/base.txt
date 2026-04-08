@@ -7,3 +7,7 @@ requests==2.32.*
 python-dotenv==1.0.*
 gunicorn==23.*
 whitenoise==6.*
+djangorestframework==3.17.*
+djangorestframework-simplejwt==5.5.*
+django-cors-headers==4.9.*
+python-dateutil==2.9.*
