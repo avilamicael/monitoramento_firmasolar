@@ -8,7 +8,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: API Infrastructure** — DRF + JWT + CORS + GarantiaUsina model: fundação que todos os endpoints dependem
+- [x] **Phase 1: API Infrastructure** — DRF + JWT + CORS + GarantiaUsina model: fundação que todos os endpoints dependem
 - [ ] **Phase 2: REST Endpoints** — Endpoints de usinas, inversores, alertas, garantias e logs de coleta
 - [ ] **Phase 3: Analytics Endpoints** — Potência média, ranking de fabricantes e dados de mapa
 - [ ] **Phase 4: Frontend Foundation** — React + Vite + autenticação JWT + layout base
@@ -55,7 +55,7 @@
 
 Plans:
 - [x] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
-- [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
+- [x] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
 
 ---
 
@@ -92,7 +92,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
+- [x] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
 - [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
 
 ---
@@ -243,7 +243,7 @@ Plans:
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 1 — API Infrastructure | API REST instalada, autenticável e segura | API-01..06, GAR-01 (7 req) | Not started |
+| 1 — API Infrastructure | API REST instalada, autenticável e segura | API-01..06, GAR-01 (7 req) | Complete ✓ |
 | 2 — REST Endpoints | Dados operacionais acessíveis via API | USN-01..05, GAR-02..06, INV-01..03, ALT-01..04, LOG-01 (18 req) | Not started |
 | 3 — Analytics Endpoints | Dados agregados para dashboard disponíveis | ANA-01..03 (3 req) | Not started |
 | 4 — Frontend Foundation | React com auth JWT + layout base funcionando | FE-01..05 (5 req) | Not started |
