@@ -159,3 +159,43 @@ class SnapshotInversor(models.Model):
 
     def __str__(self):
         return f'{self.inversor.numero_serie} @ {self.coletado_em:%d/%m/%Y %H:%M}'
+
+
+class GarantiaUsina(models.Model):
+    """
+    Garantia comercial de uma usina solar.
+    data_fim e ativa sao properties calculadas — nao existem como colunas.
+    """
+    usina = models.OneToOneField(
+        Usina,
+        on_delete=models.CASCADE,
+        related_name='garantia',
+    )
+    data_inicio = models.DateField()
+    meses = models.PositiveIntegerField()
+    observacoes = models.TextField(blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Garantia de Usina'
+        verbose_name_plural = 'Garantias de Usinas'
+
+    @property
+    def data_fim(self):
+        from dateutil.relativedelta import relativedelta
+        return self.data_inicio + relativedelta(months=self.meses)
+
+    @property
+    def ativa(self):
+        from django.utils import timezone
+        return self.data_fim >= timezone.now().date()
+
+    @property
+    def dias_restantes(self):
+        from django.utils import timezone
+        delta = self.data_fim - timezone.now().date()
+        return max(delta.days, 0)
+
+    def __str__(self):
+        return f'Garantia — {self.usina.nome} ({self.meses} meses)'
