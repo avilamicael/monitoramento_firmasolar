@@ -13,7 +13,7 @@
 - [ ] **Phase 3: Analytics Endpoints** — Potência média, ranking de fabricantes e dados de mapa
 - [ ] **Phase 4: Frontend Foundation** — React + Vite + autenticação JWT + layout base
 - [ ] **Phase 5: Usinas & Garantias** — Listagem, detalhe, edição e gestão de garantia
-- [ ] **Phase 6: Dashboard Analítico & Alertas** — Mapa, gráficos, ranking e gestão de alertas
+- [ ] **Phase 6: Dashboard & Alertas** — Mapa, gráficos, ranking e gestão de alertas
 
 ---
 
@@ -195,11 +195,12 @@ Plans:
 4. Garantias vencendo em menos de 30 dias exibem indicador vermelho na listagem
 5. Formulário de garantia cria/substitui via `PUT` e a listagem de garantias reflete o estado atualizado
 
-**Plans:** 2 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
-- [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
+- [ ] 05-01-PLAN.md — Instalar shadcn components, criar tipos TypeScript, hooks de data fetching e StatusGarantiaBadge
+- [ ] 05-02-PLAN.md — UsinasPage com tabela filtrada, UsinaDetalhePage com cards e inversores, UsinaEditDialog
+- [ ] 05-03-PLAN.md — GarantiasPage com tabela e indicador vermelho, GarantiaFormDialog com preview de data_fim
 **UI hint**: yes
 
 ---
