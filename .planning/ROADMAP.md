@@ -163,8 +163,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Instalar deps, criar axios com interceptors, AuthContext, router com rotas protegidas e proxy Vite
-- [ ] 04-02-PLAN.md — Conectar login-form, sidebar, nav-main e nav-user aos contextos de auth e routing
+- [x] 04-01-PLAN.md — Instalar deps, criar axios com interceptors, AuthContext, router com rotas protegidas e proxy Vite
+- [x] 04-02-PLAN.md — Conectar login-form, sidebar, nav-main e nav-user aos contextos de auth e routing
 **UI hint**: yes
 
 ---
