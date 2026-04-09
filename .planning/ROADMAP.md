@@ -198,9 +198,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Instalar shadcn components, criar tipos TypeScript, hooks de data fetching e StatusGarantiaBadge
-- [ ] 05-02-PLAN.md — UsinasPage com tabela filtrada, UsinaDetalhePage com cards e inversores, UsinaEditDialog
-- [ ] 05-03-PLAN.md — GarantiasPage com tabela e indicador vermelho, GarantiaFormDialog com preview de data_fim
+- [x] 05-01-PLAN.md — Instalar shadcn components, criar tipos TypeScript, hooks de data fetching e StatusGarantiaBadge
+- [x] 05-02-PLAN.md — UsinasPage com tabela filtrada, UsinaDetalhePage com cards e inversores, UsinaEditDialog
+- [x] 05-03-PLAN.md — GarantiasPage com tabela e indicador vermelho, GarantiaFormDialog com preview de data_fim
 **UI hint**: yes
 
 ---
