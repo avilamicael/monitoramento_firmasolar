@@ -6,10 +6,12 @@ from .views import PingView
 from .views.usinas import UsinaViewSet
 from .views.garantias import GarantiaListView
 from .views.inversores import InversorViewSet
+from .views.alertas import AlertaViewSet
 
 router = DefaultRouter()
 router.register('usinas', UsinaViewSet, basename='usina')
 router.register('inversores', InversorViewSet, basename='inversor')
+router.register('alertas', AlertaViewSet, basename='alerta')
 
 urlpatterns = [
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
