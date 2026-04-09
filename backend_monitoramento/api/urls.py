@@ -7,6 +7,7 @@ from .views.usinas import UsinaViewSet
 from .views.garantias import GarantiaListView
 from .views.inversores import InversorViewSet
 from .views.alertas import AlertaViewSet
+from .views.analytics import PotenciaMediaView, RankingFabricantesView, MapaUsinasView
 
 router = DefaultRouter()
 router.register('usinas', UsinaViewSet, basename='usina')
@@ -19,5 +20,8 @@ urlpatterns = [
     path('ping/', PingView.as_view(), name='api_ping'),
     path('garantias/', GarantiaListView.as_view(), name='garantia-list'),
     path('coleta/logs/', LogColetaListView.as_view(), name='log-coleta-list'),
+    path('analytics/potencia/', PotenciaMediaView.as_view(), name='analytics-potencia'),
+    path('analytics/ranking-fabricantes/', RankingFabricantesView.as_view(), name='analytics-ranking'),
+    path('analytics/mapa/', MapaUsinasView.as_view(), name='analytics-mapa'),
     path('', include(router.urls)),
 ]
