@@ -130,7 +130,7 @@ class FusionSolarAdaptador(AdaptadorProvedor):
             status='normal',   # FusionSolar não expõe status simples no list
             data_medicao=datetime.now(timezone.utc),
             fuso_horario=r.get('timeZone') or 'America/Sao_Paulo',
-            endereco=r.get('address') or '',
+            endereco=r.get('stationAddr') or r.get('address') or '',
             qtd_inversores=0,
             qtd_inversores_online=0,
             qtd_alertas=0,
