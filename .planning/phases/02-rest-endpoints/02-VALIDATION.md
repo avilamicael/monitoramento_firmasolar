@@ -53,14 +53,14 @@ created: 2026-04-09
 | 2-02-02 | 02 | 1 | GAR-03 | — | 401 sem token | integration | `pytest api/tests/test_garantias.py::TestGarantiaFiltros -x` | ✅ W0 | ⬜ pending |
 | 2-02-03 | 02 | 1 | GAR-04 | — | dias_restantes correto | integration | `pytest api/tests/test_garantias.py -x -k dias_restantes` | ✅ W0 | ⬜ pending |
 | 2-02-04 | 02 | 1 | GAR-05/06 | — | garantia não bloqueia coleta | integration | `pytest api/tests/test_garantias.py::TestGarantiaVisibilidade -x` | ✅ W0 | ⬜ pending |
-| 2-03-01 | 03 | 2 | INV-01 | — | 401 sem token | integration | `pytest api/tests/test_inversores.py -x` | ✅ W0 | ⬜ pending |
-| 2-03-02 | 03 | 2 | INV-02 | — | 401 sem token | integration | `pytest api/tests/test_inversores.py::TestInversorDetalhe -x` | ✅ W0 | ⬜ pending |
-| 2-03-03 | 03 | 2 | INV-03 | — | 401 sem token | integration | `pytest api/tests/test_inversores.py::TestInversorSnapshots -x` | ✅ W0 | ⬜ pending |
-| 2-04-01 | 04 | 2 | ALT-01 | — | 401 sem token | integration | `pytest api/tests/test_alertas.py -x` | ✅ W0 | ⬜ pending |
-| 2-04-02 | 04 | 2 | ALT-02 | — | 401 sem token | integration | `pytest api/tests/test_alertas.py::TestAlertaDetalhe -x` | ✅ W0 | ⬜ pending |
-| 2-04-03 | 04 | 2 | ALT-03 | — | 401 sem token | integration | `pytest api/tests/test_alertas.py::TestAlertaPatch -x` | ✅ W0 | ⬜ pending |
-| 2-04-04 | 04 | 2 | ALT-04 | — | com_garantia em todas respostas | integration | `pytest api/tests/test_alertas.py -x -k com_garantia` | ✅ W0 | ⬜ pending |
-| 2-05-01 | 05 | 3 | LOG-01 | — | 401 sem token | integration | `pytest api/tests/test_logs.py -x` | ✅ W0 | ⬜ pending |
+| 2-03-01 | 03 | 3 | INV-01 | — | 401 sem token | integration | `pytest api/tests/test_inversores.py -x` | ✅ W0 | ⬜ pending |
+| 2-03-02 | 03 | 3 | INV-02 | — | 401 sem token | integration | `pytest api/tests/test_inversores.py::TestInversorDetalhe -x` | ✅ W0 | ⬜ pending |
+| 2-03-03 | 03 | 3 | INV-03 | — | 401 sem token | integration | `pytest api/tests/test_inversores.py::TestInversorSnapshots -x` | ✅ W0 | ⬜ pending |
+| 2-03-04 | 03 | 3 | ALT-01 | — | 401 sem token | integration | `pytest api/tests/test_alertas.py -x` | ✅ W0 | ⬜ pending |
+| 2-03-05 | 03 | 3 | ALT-02 | — | 401 sem token | integration | `pytest api/tests/test_alertas.py::TestAlertaDetalhe -x` | ✅ W0 | ⬜ pending |
+| 2-03-06 | 03 | 3 | ALT-03 | — | 401 sem token | integration | `pytest api/tests/test_alertas.py::TestAlertaPatch -x` | ✅ W0 | ⬜ pending |
+| 2-03-07 | 03 | 3 | ALT-04 | — | com_garantia em todas respostas | integration | `pytest api/tests/test_alertas.py -x -k com_garantia` | ✅ W0 | ⬜ pending |
+| 2-04-01 | 04 | 4 | LOG-01 | — | 401 sem token | integration | `pytest api/tests/test_logs.py -x` | ✅ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
