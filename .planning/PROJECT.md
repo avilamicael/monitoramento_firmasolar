@@ -22,9 +22,9 @@ O administrador deve conseguir ver rapidamente quais usinas estão com problemas
 - ✓ Model GarantiaUsina com lógica de vigência por usina — Validated in Phase 1
 - ✓ Endpoints REST para usinas, inversores, alertas, garantias e logs — Validated in Phase 2 (72 testes passando)
 
-### Active
+- ✓ Endpoints REST para analytics (potência média, ranking, mapa) — Validated in Phase 3 (92 testes passando)
 
-- [ ] Endpoints REST para analytics (potência média, ranking, mapa)
+### Active
 - [ ] Dashboard analítico: potência média, ranking de fabricantes, mapa de clientes
 - [ ] Gestão de garantia: criar, editar período, visualizar status por usina
 - [ ] Frontend React (Vite + shadcn/ui) com roteamento e autenticação JWT
@@ -98,4 +98,4 @@ Este documento evolui a cada transição de fase e marco de milestone.
 4. Atualizar Context com estado atual
 
 ---
-*Last updated: 2026-04-09 após conclusão da Phase 02 (rest-endpoints) — 72 testes, 18 requisitos entregues*
+*Last updated: 2026-04-09 após conclusão da Phase 03 (analytics-endpoints) — 92 testes, 21 requisitos entregues*
