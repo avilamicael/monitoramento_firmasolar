@@ -2,6 +2,8 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .logs import LogColetaListView
+
 
 class PingView(APIView):
     """Endpoint minimo para verificar autenticacao. Retorna 200 se token valido."""
