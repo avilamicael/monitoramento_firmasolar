@@ -6,6 +6,7 @@ import { UsinasPage } from '@/pages/UsinasPage'
 import { UsinaDetalhePage } from '@/pages/UsinaDetalhePage'
 import { GarantiasPage } from '@/pages/GarantiasPage'
 import { AlertasPage } from '@/pages/AlertasPage'
+import { AlertaDetalhePage } from '@/pages/AlertaDetalhePage'
 import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/app-sidebar'
 import {
@@ -80,6 +81,7 @@ const router = createBrowserRouter([
       { path: 'usinas/:id', element: <UsinaDetalhePage /> },
       { path: 'usinas', element: <UsinasPage /> },
       { path: 'garantias', element: <GarantiasPage /> },
+      { path: 'alertas/:id', element: <AlertaDetalhePage /> },
       { path: 'alertas', element: <AlertasPage /> },
     ],
   },
