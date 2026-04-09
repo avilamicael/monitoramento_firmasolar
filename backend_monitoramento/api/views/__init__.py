@@ -1,3 +1,4 @@
+# Pacote de views por dominio (D-01)
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
