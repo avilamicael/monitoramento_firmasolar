@@ -17,7 +17,7 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<'div'>) {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -30,11 +30,11 @@ export function LoginForm({
     setError('')
     setLoading(true)
     try {
-      await login(email, password)
+      await login(username, password)
       navigate('/', { replace: true })
     } catch {
       // Mensagem generica — nao expor detalhes internos do erro ao usuario (CLAUDE.md seguranca)
-      setError('Credenciais invalidas. Verifique email e senha.')
+      setError('Credenciais inválidas. Verifique usuário e senha.')
     } finally {
       setLoading(false)
     }
@@ -51,13 +51,13 @@ export function LoginForm({
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Usuário</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="usuario@firmasolar.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  placeholder="admin"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                 />
               </div>

@@ -1,7 +1,11 @@
 import * as React from 'react'
-import { LayoutDashboardIcon, ZapIcon, ShieldIcon, BellIcon } from 'lucide-react'
+import {
+  ZapIcon,
+  ActivityIcon,
+  SettingsIcon,
+} from 'lucide-react'
 
-import { NavMain } from '@/components/nav-main'
+import { NavMain, type NavGroup } from '@/components/nav-main'
 import { NavUser } from '@/components/nav-user'
 import { useAuth } from '@/contexts/auth'
 import {
@@ -9,14 +13,29 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
   SidebarRail,
 } from '@/components/ui/sidebar'
 
-const navItems = [
-  { title: 'Dashboard', url: '/', icon: <LayoutDashboardIcon /> },
-  { title: 'Usinas', url: '/usinas', icon: <ZapIcon /> },
-  { title: 'Garantias', url: '/garantias', icon: <ShieldIcon /> },
-  { title: 'Alertas', url: '/alertas', icon: <BellIcon /> },
+const navGroups: NavGroup[] = [
+  {
+    label: 'Monitoramento',
+    icon: ActivityIcon,
+    items: [
+      { title: 'Dashboard', url: '/' },
+      { title: 'Usinas', url: '/usinas' },
+      { title: 'Alertas', url: '/alertas' },
+    ],
+  },
+  {
+    label: 'Gestao',
+    icon: SettingsIcon,
+    items: [
+      { title: 'Garantias', url: '/garantias' },
+    ],
+  },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -25,13 +44,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1">
-          <ZapIcon className="size-5 text-yellow-500" />
-          <span className="font-semibold text-sm">Firma Solar</span>
-        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <ZapIcon className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">Firma Solar</span>
+                <span className="truncate text-xs">Painel Admin</span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItems} />
+        <NavMain groups={navGroups} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser

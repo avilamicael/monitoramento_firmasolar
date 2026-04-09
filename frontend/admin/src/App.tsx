@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router'
+import { createBrowserRouter, RouterProvider, Navigate, Outlet, useLocation } from 'react-router'
 import { useAuth } from '@/contexts/auth'
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -12,10 +12,26 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb'
 import { Loader2Icon } from 'lucide-react'
+
+const ROUTE_TITLES: Record<string, string> = {
+  '/': 'Dashboard',
+  '/dashboard': 'Dashboard',
+  '/usinas': 'Usinas',
+  '/garantias': 'Garantias',
+  '/alertas': 'Alertas',
+}
 
 function ProtectedLayout() {
   const { isAuthenticated, isLoading } = useAuth()
+  const { pathname } = useLocation()
+  const pageTitle = ROUTE_TITLES[pathname] ?? 'Firma Solar'
 
   if (isLoading) {
     return (
@@ -35,8 +51,14 @@ function ProtectedLayout() {
       <SidebarInset>
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
-          <span className="text-sm font-medium">Firma Solar</span>
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
         </header>
         <main className="flex-1 p-4">
           <Outlet />
