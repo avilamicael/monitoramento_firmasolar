@@ -2,23 +2,32 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "@/components/ui/avatar"
+} from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu'
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { ChevronsUpDownIcon, SparklesIcon, BadgeCheckIcon, CreditCardIcon, BellIcon, LogOutIcon } from "lucide-react"
+} from '@/components/ui/sidebar'
+import { ChevronsUpDownIcon, LogOutIcon } from 'lucide-react'
+import { useAuth } from '@/contexts/auth'
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0].toUpperCase())
+    .join('')
+}
 
 export function NavUser({
   user,
@@ -30,6 +39,7 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const { logout } = useAuth()
 
   return (
     <SidebarMenu>
@@ -42,7 +52,9 @@ export function NavUser({
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarFallback className="rounded-lg">
+                  {getInitials(user.name)}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -53,7 +65,7 @@ export function NavUser({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
           >
@@ -61,7 +73,9 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">
+                    {getInitials(user.name)}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
@@ -70,36 +84,9 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <SparklesIcon
-                />
-                Upgrade to Pro
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheckIcon
-                />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCardIcon
-                />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BellIcon
-                />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOutIcon
-              />
-              Log out
+            <DropdownMenuItem onClick={logout}>
+              <LogOutIcon />
+              Sair
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
