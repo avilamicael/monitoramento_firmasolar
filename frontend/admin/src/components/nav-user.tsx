@@ -18,6 +18,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { ChevronsUpDownIcon, LogOutIcon } from 'lucide-react'
+import { useNavigate } from 'react-router'
 import { useAuth } from '@/contexts/auth'
 
 function getInitials(name: string): string {
@@ -40,6 +41,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const { logout } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <SidebarMenu>
@@ -84,7 +86,7 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>
+            <DropdownMenuItem onClick={() => { logout(); navigate('/login', { replace: true }) }}>
               <LogOutIcon />
               Sair
             </DropdownMenuItem>
