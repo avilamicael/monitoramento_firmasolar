@@ -16,6 +16,8 @@ import type { GarantiaUsina } from '@/types/garantias'
 
 interface GarantiaFormDialogProps {
   garantia: GarantiaUsina | null
+  usinaId: string | null
+  usinaNome: string | null
   open: boolean
   onClose: () => void
   onSuccess: () => void
@@ -23,6 +25,8 @@ interface GarantiaFormDialogProps {
 
 export function GarantiaFormDialog({
   garantia,
+  usinaId,
+  usinaNome,
   open,
   onClose,
   onSuccess,
@@ -32,6 +36,10 @@ export function GarantiaFormDialog({
   const [observacoes, setObservacoes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isEditing = garantia !== null
+  const targetUsinaId = garantia?.usina_id ?? usinaId
+  const targetUsinaNome = garantia?.usina_nome ?? usinaNome
 
   useEffect(() => {
     if (garantia !== null) {
@@ -44,12 +52,11 @@ export function GarantiaFormDialog({
       setObservacoes('')
     }
     setError(null)
-  }, [garantia])
+  }, [garantia, usinaId])
 
-  // Preview de data_fim calculado em tempo real (D-03)
   const dataFimPreview = useMemo(() => {
     if (!dataInicio || !meses || parseInt(meses) < 1) return null
-    const d = new Date(dataInicio + 'T00:00:00') // T00:00:00 evita timezone shift
+    const d = new Date(dataInicio + 'T00:00:00')
     d.setMonth(d.getMonth() + parseInt(meses))
     return d.toLocaleDateString('pt-BR')
   }, [dataInicio, meses])
@@ -58,28 +65,30 @@ export function GarantiaFormDialog({
     e.preventDefault()
     setError(null)
 
-    // Validacao local (T-05-07)
     if (!dataInicio) {
-      setError('Data de inicio e obrigatoria')
+      setError('Data de início é obrigatória')
       return
     }
     const mesesNum = parseInt(meses)
     if (isNaN(mesesNum) || mesesNum < 1) {
-      setError('Duracao deve ser pelo menos 1 mes')
+      setError('Duração deve ser pelo menos 1 mês')
+      return
+    }
+    if (!targetUsinaId) {
+      setError('Usina não identificada')
       return
     }
 
     setSaving(true)
     try {
-      await api.put(`/api/usinas/${garantia!.usina_id}/garantia/`, {
+      await api.put(`/api/usinas/${targetUsinaId}/garantia/`, {
         data_inicio: dataInicio,
         meses: mesesNum,
         observacoes,
       })
-      toast.success('Garantia salva com sucesso')
+      toast.success(isEditing ? 'Garantia atualizada' : 'Garantia criada')
       onSuccess()
     } catch {
-      // Erro generico — nao expor detalhes do backend (T-05-09)
       toast.error('Erro ao salvar garantia')
       setError('Erro ao salvar')
     } finally {
@@ -91,15 +100,15 @@ export function GarantiaFormDialog({
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Editar Garantia</DialogTitle>
-          {garantia?.usina_nome && (
-            <DialogDescription>{garantia.usina_nome}</DialogDescription>
+          <DialogTitle>{isEditing ? 'Editar Garantia' : 'Adicionar Garantia'}</DialogTitle>
+          {targetUsinaNome && (
+            <DialogDescription>{targetUsinaNome}</DialogDescription>
           )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="data-inicio">Data de Inicio</Label>
+            <Label htmlFor="data-inicio">Data de Início</Label>
             <Input
               id="data-inicio"
               type="date"
@@ -110,7 +119,7 @@ export function GarantiaFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="meses">Duracao (meses)</Label>
+            <Label htmlFor="meses">Duração (meses)</Label>
             <Input
               id="meses"
               type="number"
@@ -123,12 +132,12 @@ export function GarantiaFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="observacoes">Observacoes</Label>
+            <Label htmlFor="observacoes">Observações</Label>
             <Input
               id="observacoes"
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Observacoes (opcional)"
+              placeholder="Observações (opcional)"
             />
           </div>
 
@@ -148,7 +157,7 @@ export function GarantiaFormDialog({
               Cancelar
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Salvando...' : 'Salvar'}
+              {saving ? 'Salvando...' : isEditing ? 'Atualizar' : 'Criar'}
             </Button>
           </DialogFooter>
         </form>

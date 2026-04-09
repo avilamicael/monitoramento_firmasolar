@@ -1,0 +1,83 @@
+import { ZapIcon, DollarSignIcon } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { EnergiaResumo } from '@/types/analytics'
+
+interface EnergiaCardsProps {
+  data: EnergiaResumo | null
+  loading: boolean
+  error: string | null
+  onRetry: () => void
+}
+
+const CUSTO_KWH = 0.88
+
+function formatarEnergia(kwh: number): string {
+  if (kwh >= 1000) {
+    return `${(kwh / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MWh`
+  }
+  return `${kwh.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kWh`
+}
+
+function formatarMoeda(valor: number): string {
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+export function EnergiaCards({ data, loading, error, onRetry }: EnergiaCardsProps) {
+  if (error) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="py-6">
+            <p className="text-sm text-destructive">
+              {error}{' '}
+              <button onClick={onRetry} className="underline hover:no-underline">
+                Tentar novamente
+              </button>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Energia Total Gerada
+          </CardTitle>
+          <ZapIcon className="size-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Skeleton className="h-8 w-36" />
+          ) : (
+            <p className="text-2xl font-bold">
+              {data ? formatarEnergia(data.energia_total_kwh) : '--'}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Valor Economizado
+          </CardTitle>
+          <DollarSignIcon className="size-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Skeleton className="h-8 w-36" />
+          ) : (
+            <p className="text-2xl font-bold">
+              {data ? formatarMoeda(data.energia_total_kwh * CUSTO_KWH) : '--'}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

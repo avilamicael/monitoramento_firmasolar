@@ -27,3 +27,30 @@ export interface MapaUsina {
   ativo: boolean
   status: 'sem_dados' | 'normal' | 'aviso' | 'offline' | 'construcao'
 }
+
+export interface EnergiaResumo {
+  energia_hoje_kwh: number
+  energia_mes_kwh: number
+  energia_total_kwh: number
+  usinas_ativas: number
+}
+
+export interface AlertasResumo {
+  critico: number
+  importante: number
+  aviso: number
+  info: number
+  total_ativos: number
+  em_atendimento: number
+}
+
+export interface GeracaoDiariaItem {
+  dia: string
+  energia_kwh: number
+  usinas_coletadas: number
+}
+
+export interface GeracaoDiaria {
+  dias: number
+  geracao: GeracaoDiariaItem[]
+}

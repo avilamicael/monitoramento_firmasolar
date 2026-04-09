@@ -6,6 +6,9 @@ export interface UsinaResumo {
   provedor: string
   capacidade_kwp: number
   ativo: boolean
+  endereco: string
+  cidade: string
+  telefone: string
   status_garantia: StatusGarantia
   criado_em: string
   atualizado_em: string

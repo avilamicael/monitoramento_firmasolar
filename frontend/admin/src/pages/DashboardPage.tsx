@@ -1,153 +1,131 @@
-import { useState } from 'react'
-import { Loader2Icon, XIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { PotenciaPieChart } from '@/components/dashboard/PotenciaPieChart'
-import { RankingTable } from '@/components/dashboard/RankingTable'
-import { MapaUsinas } from '@/components/dashboard/MapaUsinas'
-import { useAnalyticsPotencia, useAnalyticsRanking, useAnalyticsMapa } from '@/hooks/use-analytics'
+import { Skeleton } from '@/components/ui/skeleton'
+import { EnergiaCards } from '@/components/dashboard/EnergiaCards'
+import { AlertasCards } from '@/components/dashboard/AlertasCards'
+import { FabricantePieChart } from '@/components/dashboard/FabricantePieChart'
+import { UsinasPorCidadeChart } from '@/components/dashboard/UsinasPorCidadeChart'
+import { GeracaoDiariaChart } from '@/components/dashboard/GeracaoDiariaChart'
+import { AlertasCriticosTable } from '@/components/dashboard/AlertasCriticosTable'
+import {
+  useEnergiaResumo,
+  useAlertasResumo,
+  useAnalyticsRanking,
+  useGeracaoDiaria,
+} from '@/hooks/use-analytics'
+import { useAlertas } from '@/hooks/use-alertas'
+import { useUsinas } from '@/hooks/use-usinas'
 
 export function DashboardPage() {
-  const [selectedProvedor, setSelectedProvedor] = useState<string | null>(null)
-
-  const {
-    data: potenciaData,
-    loading: potenciaLoading,
-    error: potenciaError,
-    refetch: refetchPotencia,
-  } = useAnalyticsPotencia()
-
-  const {
-    data: rankingData,
-    loading: rankingLoading,
-    error: rankingError,
-    refetch: refetchRanking,
-  } = useAnalyticsRanking()
-
-  const {
-    data: mapaData,
-    loading: mapaLoading,
-    error: mapaError,
-    refetch: refetchMapa,
-  } = useAnalyticsMapa()
-
-  const isLoading = potenciaLoading || rankingLoading || mapaLoading
-
-  const usinasFiltradas = selectedProvedor
-    ? (mapaData ?? []).filter((u) => u.provedor === selectedProvedor)
-    : (mapaData ?? [])
+  const energia = useEnergiaResumo()
+  const alertasResumo = useAlertasResumo()
+  const ranking = useAnalyticsRanking()
+  const geracao = useGeracaoDiaria(30)
+  const alertasCriticos = useAlertas({ estado: 'ativo', nivel: 'critico' })
+  const usinas = useUsinas()
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Grafico de pizza: potencia media por fabricante */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Potencia Media por Fabricante</CardTitle>
-                {potenciaError ? (
-                  <CardDescription className="text-destructive">
-                    {potenciaError}{' '}
-                    <button
-                      onClick={() => void refetchPotencia()}
-                      className="underline hover:no-underline"
-                    >
-                      Tentar novamente
-                    </button>
-                  </CardDescription>
-                ) : (
-                  <CardDescription>
-                    {potenciaData?.media_geral_kw != null
-                      ? `Potencia media geral: ${potenciaData.media_geral_kw.toFixed(2)} kW`
-                      : 'Sem dados de potencia geral'}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <PotenciaPieChart data={potenciaData?.por_provedor ?? []} />
-              </CardContent>
-            </Card>
+      {/* Linha 1 — Cards de energia */}
+      <EnergiaCards
+        data={energia.data}
+        loading={energia.loading}
+        error={energia.error}
+        onRetry={energia.refetch}
+      />
 
-            {/* Tabela de ranking top 5 fabricantes */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Top 5 Fabricantes</CardTitle>
-                {rankingError ? (
-                  <CardDescription className="text-destructive">
-                    {rankingError}{' '}
-                    <button
-                      onClick={() => void refetchRanking()}
-                      className="underline hover:no-underline"
-                    >
-                      Tentar novamente
-                    </button>
-                  </CardDescription>
-                ) : (
-                  <CardDescription>
-                    {selectedProvedor
-                      ? `Filtrado por: ${selectedProvedor} — clique novamente para remover filtro`
-                      : 'Clique em um fabricante para filtrar o mapa'}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <RankingTable
-                  ranking={rankingData?.ranking ?? []}
-                  selectedProvedor={selectedProvedor}
-                  onSelectProvedor={setSelectedProvedor}
-                />
-              </CardContent>
-            </Card>
-          </div>
+      {/* Linha 2 — Cards de alertas */}
+      <AlertasCards
+        data={alertasResumo.data}
+        loading={alertasResumo.loading}
+        error={alertasResumo.error}
+        onRetry={alertasResumo.refetch}
+      />
 
-          {/* Mapa de usinas */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Mapa de Usinas</CardTitle>
-                {selectedProvedor && (
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
-                      Filtrando: {selectedProvedor}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedProvedor(null)}
-                      className="h-6 w-6 p-0"
-                      aria-label="Remover filtro"
-                    >
-                      <XIcon className="size-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {mapaError && (
-                <CardDescription className="text-destructive">
-                  {mapaError}{' '}
-                  <button
-                    onClick={() => void refetchMapa()}
-                    className="underline hover:no-underline"
-                  >
-                    Tentar novamente
-                  </button>
-                </CardDescription>
-              )}
-            </CardHeader>
-            <CardContent>
-              <MapaUsinas usinas={usinasFiltradas} />
-            </CardContent>
-          </Card>
-        </>
-      )}
+      {/* Linha 3 — Graficos lado a lado */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Inversores por Fabricante</CardTitle>
+            {ranking.error && (
+              <CardDescription className="text-destructive">
+                {ranking.error}{' '}
+                <button
+                  onClick={() => void ranking.refetch()}
+                  className="underline hover:no-underline"
+                >
+                  Tentar novamente
+                </button>
+              </CardDescription>
+            )}
+          </CardHeader>
+          <CardContent>
+            {ranking.loading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : (
+              <FabricantePieChart data={ranking.data?.ranking ?? []} />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Usinas por Cidade</CardTitle>
+            {usinas.error && (
+              <CardDescription className="text-destructive">
+                {usinas.error}{' '}
+                <button
+                  onClick={() => void usinas.refetch()}
+                  className="underline hover:no-underline"
+                >
+                  Tentar novamente
+                </button>
+              </CardDescription>
+            )}
+          </CardHeader>
+          <CardContent>
+            {usinas.loading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : (
+              <UsinasPorCidadeChart usinas={usinas.data?.results ?? []} />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Linha 4 — Grafico de geracao diaria */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Geracao de Energia (Ultimos 30 dias)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <GeracaoDiariaChart
+            data={geracao.data?.geracao ?? []}
+            loading={geracao.loading}
+            error={geracao.error}
+            onRetry={geracao.refetch}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Linha 5 — Tabela de alertas criticos */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Alertas Criticos Ativos</CardTitle>
+          <CardDescription>
+            Clique em um alerta para ver mais detalhes
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertasCriticosTable
+            alertas={alertasCriticos.data?.results ?? []}
+            loading={alertasCriticos.loading}
+            error={alertasCriticos.error}
+            onRetry={alertasCriticos.refetch}
+          />
+        </CardContent>
+      </Card>
     </div>
   )
 }
