@@ -34,12 +34,12 @@ export function UsinasPage() {
   const totalPages = Math.ceil((data?.count ?? 0) / 20)
 
   function handleProvedorChange(value: string) {
-    setProvedor(value)
+    setProvedor(value === 'all' ? '' : value)
     setPage(1)
   }
 
   function handleStatusGarantiaChange(value: string) {
-    setStatusGarantia(value)
+    setStatusGarantia(value === 'all' ? '' : value)
     setPage(1)
   }
 
@@ -51,7 +51,7 @@ export function UsinasPage() {
             <SelectValue placeholder="Provedor" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="solis">Solis</SelectItem>
             <SelectItem value="growatt">Growatt</SelectItem>
           </SelectContent>
@@ -62,7 +62,7 @@ export function UsinasPage() {
             <SelectValue placeholder="Status Garantia" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="ativa">Ativa</SelectItem>
             <SelectItem value="vencida">Vencida</SelectItem>
             <SelectItem value="sem_garantia">Sem Garantia</SelectItem>

@@ -31,7 +31,7 @@ export function GarantiasPage() {
   })
 
   function handleFiltroChange(value: string) {
-    setFiltro(value)
+    setFiltro(value === 'all' ? '' : value)
     setPage(1)
   }
 
@@ -50,7 +50,7 @@ export function GarantiasPage() {
             <SelectValue placeholder="Todas" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas</SelectItem>
+            <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="ativas">Ativas</SelectItem>
             <SelectItem value="vencendo">Vencendo em 30 dias</SelectItem>
             <SelectItem value="vencidas">Vencidas</SelectItem>
