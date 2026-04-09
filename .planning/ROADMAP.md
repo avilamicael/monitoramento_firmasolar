@@ -140,12 +140,13 @@ Plans:
 **Requirements:** FE-01, FE-02, FE-03, FE-04, FE-05
 
 **Scope:**
-- Criar projeto React com Vite + TypeScript em `frontend/painel/`
-- Configurar shadcn/ui com tema e componentes base
-- Configurar react-router-dom com rotas protegidas: rota pública `/login`, demais rotas exigem token válido
-- Tela de login: formulário email/senha, validação, feedback de erro, armazenamento de `access` e `refresh` no `localStorage` (ou `sessionStorage` — decisão a registrar em DECISIONS.md)
-- Cliente HTTP (axios ou fetch wrapper) com interceptor que: injeta `Authorization: Bearer` em todas as requisições, tenta `POST /api/auth/token/refresh/` automaticamente em 401, faz logout e redireciona para `/login` em 401 persistente (refresh também falhou)
-- Layout base com sidebar de navegação (links para usinas, garantias, dashboard, alertas) e header com nome do usuário logado
+- Projeto React + Vite + TypeScript já existe em `frontend/admin/` com shadcn/ui configurado
+- Instalar react-router e axios; configurar proxy Vite para dev
+- Configurar react-router com rotas protegidas: rota pública `/login`, demais rotas exigem token válido
+- Tela de login: formulário email/senha conectado à API JWT, validação, feedback de erro, armazenamento em localStorage
+- Cliente HTTP (axios) com interceptor que injeta Bearer, faz refresh automático em 401, logout em 401 persistente
+- AuthContext para gerenciar estado de autenticação (user, isAuthenticated, isLoading, login, logout)
+- Layout base com sidebar adaptada (Dashboard, Usinas, Garantias, Alertas) e header com nome do usuário logado
 - Configuração de proxy Vite para dev (`/api` → `http://localhost:8000`) e variável `VITE_API_URL` para prod
 
 **Out of Scope:**
@@ -162,8 +163,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
-- [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
+- [ ] 04-01-PLAN.md — Instalar deps, criar axios com interceptors, AuthContext, router com rotas protegidas e proxy Vite
+- [ ] 04-02-PLAN.md — Conectar login-form, sidebar, nav-main e nav-user aos contextos de auth e routing
 **UI hint**: yes
 
 ---
