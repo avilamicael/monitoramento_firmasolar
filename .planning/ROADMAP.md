@@ -235,8 +235,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Instalar pacotes, configurar DRF+JWT+CORS, criar app api e model GarantiaUsina
-- [ ] 01-02-PLAN.md — Testes completos: auth JWT, CORS e GarantiaUsina
+- [ ] 06-01-PLAN.md — Instalar pacotes, tipos TypeScript, hooks com polling, DashboardPage com pizza e ranking
+- [ ] 06-02-PLAN.md — Mapa react-leaflet integrado ao ranking, AlertasPage com filtros, AlertaDetalhePage com PATCH
 **UI hint**: yes
 
 ---
