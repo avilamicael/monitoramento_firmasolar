@@ -170,3 +170,85 @@ def tokens(client, db, django_user_model):
         content_type='application/json',
     )
     return response.json()
+
+
+# --- Fixtures de analytics (Phase 03) ---
+
+@pytest.fixture
+def snapshot_usina_hoymiles(db, usina_hoymiles):
+    """SnapshotUsina para usina_hoymiles — 3.0 kW, status normal."""
+    snap = SnapshotUsina.objects.create(
+        usina=usina_hoymiles,
+        coletado_em=timezone.now(),
+        potencia_kw=3.0,
+        energia_hoje_kwh=6.0,
+        energia_mes_kwh=150.0,
+        energia_total_kwh=5000.0,
+        status='normal',
+        qtd_inversores=1,
+        qtd_inversores_online=1,
+        qtd_alertas=0,
+    )
+    usina_hoymiles.ultimo_snapshot = snap
+    usina_hoymiles.save(update_fields=['ultimo_snapshot'])
+    return snap
+
+
+@pytest.fixture
+def inversor_hoymiles(db, usina_hoymiles):
+    """Inversor vinculado a usina_hoymiles."""
+    return Inversor.objects.create(
+        usina=usina_hoymiles,
+        id_inversor_provedor='inv-hoymiles-001',
+        numero_serie='HM12345',
+        modelo='HM-1500',
+    )
+
+
+@pytest.fixture
+def snapshot_inversor_hoymiles(db, inversor_hoymiles):
+    """SnapshotInversor para inversor_hoymiles — pac_kw=2.5."""
+    snap = SnapshotInversor.objects.create(
+        inversor=inversor_hoymiles,
+        coletado_em=timezone.now(),
+        estado='normal',
+        pac_kw=2.5,
+        energia_hoje_kwh=5.0,
+        energia_total_kwh=2500.0,
+    )
+    inversor_hoymiles.ultimo_snapshot = snap
+    inversor_hoymiles.save(update_fields=['ultimo_snapshot'])
+    return snap
+
+
+@pytest.fixture
+def inversor_inativo(db, usina):
+    """Inversor sem snapshot (ultimo_snapshot=None) — exclui do ranking ANA-02."""
+    return Inversor.objects.create(
+        usina=usina,
+        id_inversor_provedor='inv-inativo-001',
+        numero_serie='SN-INATIVO',
+        modelo='Solis 3K',
+    )
+
+
+@pytest.fixture
+def inversor_pac_zero(db, usina):
+    """Inversor com snapshot mas pac_kw=0 — exclui do ranking ANA-02."""
+    inv = Inversor.objects.create(
+        usina=usina,
+        id_inversor_provedor='inv-pac-zero-001',
+        numero_serie='SN-PACZERO',
+        modelo='Solis 5K',
+    )
+    snap = SnapshotInversor.objects.create(
+        inversor=inv,
+        coletado_em=timezone.now(),
+        estado='offline',
+        pac_kw=0.0,
+        energia_hoje_kwh=0.0,
+        energia_total_kwh=1000.0,
+    )
+    inv.ultimo_snapshot = snap
+    inv.save(update_fields=['ultimo_snapshot'])
+    return inv

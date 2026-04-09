@@ -28,6 +28,8 @@ class Usina(models.Model):
     capacidade_kwp = models.FloatField(default=0.0)
     fuso_horario = models.CharField(max_length=50, default='America/Sao_Paulo')
     endereco = models.TextField(blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     ativo = models.BooleanField(default=True)
     # Último snapshot salvo — desnormalizado para consultas rápidas
     ultimo_snapshot = models.OneToOneField(
