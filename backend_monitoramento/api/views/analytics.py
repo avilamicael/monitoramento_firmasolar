@@ -1,9 +1,14 @@
-from django.db.models import Avg, Count, F, Q
+import datetime
+
+from django.db.models import Avg, Count, F, Q, Sum
+from django.db.models.functions import TruncDate
+from django.utils import timezone
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from usinas.models import Inversor, Usina
+from alertas.models import Alerta
+from usinas.models import Inversor, SnapshotUsina, Usina
 from api.serializers.analytics import UsinaMapaSerializer
 
 
@@ -87,3 +92,104 @@ class MapaUsinasView(generics.ListAPIView):
             .select_related('ultimo_snapshot')
             .order_by('nome')
         )
+
+
+class AlertasResumoView(APIView):
+    """
+    GET /api/analytics/alertas-resumo/
+    Contagem de alertas ativos por nível e estado.
+    Retorna também total de alertas em atendimento.
+    """
+
+    def get(self, request):
+        ativos = Alerta.objects.filter(estado='ativo')
+
+        por_nivel = dict(
+            ativos.values('nivel')
+            .annotate(total=Count('id'))
+            .values_list('nivel', 'total')
+        )
+
+        por_estado = dict(
+            Alerta.objects.exclude(estado='resolvido')
+            .values('estado')
+            .annotate(total=Count('id'))
+            .values_list('estado', 'total')
+        )
+
+        return Response({
+            'critico': por_nivel.get('critico', 0),
+            'importante': por_nivel.get('importante', 0),
+            'aviso': por_nivel.get('aviso', 0),
+            'info': por_nivel.get('info', 0),
+            'total_ativos': sum(por_nivel.values()),
+            'em_atendimento': por_estado.get('em_atendimento', 0),
+        })
+
+
+class GeracaoDiariaView(APIView):
+    """
+    GET /api/analytics/geracao-diaria/?dias=30
+    Energia gerada por dia (soma de energia_hoje_kwh de todos os snapshots do dia).
+    Retorna últimos N dias (default 30).
+    """
+
+    def get(self, request):
+        dias = min(int(request.query_params.get('dias', 30)), 90)
+        data_inicio = timezone.now() - datetime.timedelta(days=dias)
+
+        por_dia = list(
+            SnapshotUsina.objects
+            .filter(coletado_em__gte=data_inicio)
+            .annotate(dia=TruncDate('coletado_em'))
+            .values('dia')
+            .annotate(
+                energia_kwh=Sum('energia_hoje_kwh'),
+                usinas_coletadas=Count('usina', distinct=True),
+            )
+            .order_by('dia')
+        )
+
+        # Converter date para string ISO
+        resultado = [
+            {
+                'dia': item['dia'].isoformat(),
+                'energia_kwh': round(item['energia_kwh'] or 0, 2),
+                'usinas_coletadas': item['usinas_coletadas'],
+            }
+            for item in por_dia
+        ]
+
+        return Response({
+            'dias': dias,
+            'geracao': resultado,
+        })
+
+
+class EnergiaResumoView(APIView):
+    """
+    GET /api/analytics/energia-resumo/
+    Soma total de energia de todas as usinas (via ultimo_snapshot).
+    Inclui energia_hoje, energia_mes e energia_total.
+    """
+
+    def get(self, request):
+        qs = (
+            Usina.objects
+            .filter(ativo=True, ultimo_snapshot__isnull=False)
+            .select_related('ultimo_snapshot')
+        )
+
+        totais = qs.aggregate(
+            energia_hoje_kwh=Sum('ultimo_snapshot__energia_hoje_kwh'),
+            energia_mes_kwh=Sum('ultimo_snapshot__energia_mes_kwh'),
+            energia_total_kwh=Sum('ultimo_snapshot__energia_total_kwh'),
+            usinas_ativas=Count('id'),
+        )
+
+        return Response({
+            'energia_hoje_kwh': round(totais['energia_hoje_kwh'] or 0, 2),
+            'energia_mes_kwh': round(totais['energia_mes_kwh'] or 0, 2),
+            'energia_total_kwh': round(totais['energia_total_kwh'] or 0, 2),
+            'usinas_ativas': totais['usinas_ativas'],
+        })

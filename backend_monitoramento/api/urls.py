@@ -7,7 +7,10 @@ from .views.usinas import UsinaViewSet
 from .views.garantias import GarantiaListView
 from .views.inversores import InversorViewSet
 from .views.alertas import AlertaViewSet
-from .views.analytics import PotenciaMediaView, RankingFabricantesView, MapaUsinasView
+from .views.analytics import (
+    PotenciaMediaView, RankingFabricantesView, MapaUsinasView,
+    AlertasResumoView, GeracaoDiariaView, EnergiaResumoView,
+)
 
 router = DefaultRouter()
 router.register('usinas', UsinaViewSet, basename='usina')
@@ -23,5 +26,8 @@ urlpatterns = [
     path('analytics/potencia/', PotenciaMediaView.as_view(), name='analytics-potencia'),
     path('analytics/ranking-fabricantes/', RankingFabricantesView.as_view(), name='analytics-ranking'),
     path('analytics/mapa/', MapaUsinasView.as_view(), name='analytics-mapa'),
+    path('analytics/alertas-resumo/', AlertasResumoView.as_view(), name='analytics-alertas-resumo'),
+    path('analytics/geracao-diaria/', GeracaoDiariaView.as_view(), name='analytics-geracao-diaria'),
+    path('analytics/energia-resumo/', EnergiaResumoView.as_view(), name='analytics-energia-resumo'),
     path('', include(router.urls)),
 ]

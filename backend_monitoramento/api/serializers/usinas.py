@@ -32,6 +32,7 @@ class UsinaListSerializer(serializers.ModelSerializer):
         model = Usina
         fields = [
             'id', 'nome', 'provedor', 'capacidade_kwp', 'ativo',
+            'endereco', 'cidade', 'telefone',
             'status_garantia', 'criado_em', 'atualizado_em',
         ]
 
@@ -55,7 +56,8 @@ class UsinaDetalheSerializer(serializers.ModelSerializer):
         model = Usina
         fields = [
             'id', 'nome', 'provedor', 'capacidade_kwp', 'ativo',
-            'fuso_horario', 'endereco', 'status_garantia',
+            'fuso_horario', 'endereco', 'cidade', 'telefone',
+            'latitude', 'longitude', 'status_garantia',
             'ultimo_snapshot', 'inversores', 'criado_em', 'atualizado_em',
         ]
 
