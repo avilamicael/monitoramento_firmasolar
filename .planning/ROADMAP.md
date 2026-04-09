@@ -235,8 +235,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Instalar pacotes, tipos TypeScript, hooks com polling, DashboardPage com pizza e ranking
-- [ ] 06-02-PLAN.md — Mapa react-leaflet integrado ao ranking, AlertasPage com filtros, AlertaDetalhePage com PATCH
+- [x] 06-01-PLAN.md — Instalar pacotes, tipos TypeScript, hooks com polling, DashboardPage com pizza e ranking
+- [x] 06-02-PLAN.md — Mapa react-leaflet integrado ao ranking, AlertasPage com filtros, AlertaDetalhePage com PATCH
 **UI hint**: yes
 
 ---
