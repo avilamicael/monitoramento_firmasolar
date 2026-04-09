@@ -18,12 +18,13 @@ O administrador deve conseguir ver rapidamente quais usinas estão com problemas
 - ✓ Persistência em PostgreSQL (Usina, Inversor, SnapshotUsina, SnapshotInversor) — existente
 - ✓ Supressão inteligente de alertas — existente
 - ✓ Criptografia de credenciais dos provedores em repouso (Fernet) — existente
+- ✓ API REST com autenticação JWT (DRF + simplejwt + CORS) — Validated in Phase 1
+- ✓ Model GarantiaUsina com lógica de vigência por usina — Validated in Phase 1
+- ✓ Endpoints REST para usinas, inversores, alertas, garantias e logs — Validated in Phase 2 (72 testes passando)
 
 ### Active
 
-- [ ] API REST com autenticação JWT (DRF + simplejwt + CORS)
-- [ ] Model GarantiaUsina com lógica de vigência por usina
-- [ ] Endpoints REST para usinas, inversores, alertas, garantias e analytics
+- [ ] Endpoints REST para analytics (potência média, ranking, mapa)
 - [ ] Dashboard analítico: potência média, ranking de fabricantes, mapa de clientes
 - [ ] Gestão de garantia: criar, editar período, visualizar status por usina
 - [ ] Frontend React (Vite + shadcn/ui) com roteamento e autenticação JWT
@@ -72,7 +73,7 @@ O backend já existe e funciona em produção em `monitoramento.firmasolar.com.b
 
 | Decisão | Racional | Outcome |
 |---------|----------|---------|
-| DRF + simplejwt para autenticação | Padrão Django, integração nativa com ORM existente | — Pending |
+| DRF + simplejwt para autenticação | Padrão Django, integração nativa com ORM existente | ✓ Implemented (Phase 1) |
 | react-leaflet para mapa | Open source, sem custo, boa integração React | — Pending |
 | Recharts para gráficos | Integra nativamente com shadcn/ui | — Pending |
 | Polling para atualização de dados | Ciclo de coleta é 10 min; WebSocket seria overkill | — Pending |
@@ -97,4 +98,4 @@ Este documento evolui a cada transição de fase e marco de milestone.
 4. Atualizar Context com estado atual
 
 ---
-*Last updated: 2026-04-07 após inicialização*
+*Last updated: 2026-04-09 após conclusão da Phase 02 (rest-endpoints) — 72 testes, 18 requisitos entregues*
