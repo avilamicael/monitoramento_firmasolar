@@ -5,9 +5,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import PingView
 from .views.usinas import UsinaViewSet
 from .views.garantias import GarantiaListView
+from .views.inversores import InversorViewSet
 
 router = DefaultRouter()
 router.register('usinas', UsinaViewSet, basename='usina')
+router.register('inversores', InversorViewSet, basename='inversor')
 
 urlpatterns = [
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
