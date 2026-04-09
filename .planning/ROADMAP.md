@@ -126,8 +126,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Migration lat/lng, serializer de mapa, fixtures e testes RED (ANA-01/02/03)
-- [ ] 03-02-PLAN.md — Views de analytics (potencia, ranking, mapa) + URLs + testes GREEN
+- [x] 03-01-PLAN.md — Migration lat/lng, serializer de mapa, fixtures e testes RED (ANA-01/02/03)
+- [x] 03-02-PLAN.md — Views de analytics (potencia, ranking, mapa) + URLs + testes GREEN
 
 ---
 
