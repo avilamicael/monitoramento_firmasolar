@@ -1,4 +1,4 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -27,7 +27,8 @@ class UsinaViewSet(viewsets.ModelViewSet):
     """
 
     # POST e DELETE retornam 405 (T-2-05)
-    http_method_names = ['get', 'patch', 'head', 'options']
+    # PUT e permitido apenas para a action 'garantia' — nao para o recurso principal
+    http_method_names = ['get', 'patch', 'put', 'head', 'options']
     filterset_class = UsinaFilterSet
 
     def get_queryset(self):
@@ -41,6 +42,16 @@ class UsinaViewSet(viewsets.ModelViewSet):
             .prefetch_related('inversores')
             .order_by('nome')
         )
+
+    def update(self, request, *args, **kwargs):
+        """
+        Bloqueia PUT /api/usinas/{id}/ — usinas nao sao substituidas via API.
+        PATCH (partial=True) e permitido e delegado ao comportamento padrao do DRF.
+        PUT e permitido apenas na action 'garantia' (url_path='garantia').
+        """
+        if not kwargs.get('partial', False):
+            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        return super().update(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == 'list':
