@@ -3,8 +3,10 @@ import { useAuth } from '@/contexts/auth'
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { UsinasPage } from '@/pages/UsinasPage'
+import { UsinaDetalhePage } from '@/pages/UsinaDetalhePage'
 import { GarantiasPage } from '@/pages/GarantiasPage'
 import { AlertasPage } from '@/pages/AlertasPage'
+import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/app-sidebar'
 import {
   SidebarProvider,
@@ -75,6 +77,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'dashboard', element: <DashboardPage /> },
+      { path: 'usinas/:id', element: <UsinaDetalhePage /> },
       { path: 'usinas', element: <UsinasPage /> },
       { path: 'garantias', element: <GarantiasPage /> },
       { path: 'alertas', element: <AlertasPage /> },
@@ -83,5 +86,10 @@ const router = createBrowserRouter([
 ])
 
 export default function App() {
-  return <RouterProvider router={router} />
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster />
+    </>
+  )
 }
