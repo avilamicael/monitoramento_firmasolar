@@ -47,7 +47,10 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Potência Média por Fabricante</CardTitle>
+            <CardTitle>Geração por Fabricante</CardTitle>
+            <CardDescription>
+              Energia gerada hoje por provedor. Eficiência = energia hoje (kWh) ÷ capacidade instalada (kWp).
+            </CardDescription>
             {potencia.error && (
               <CardDescription className="text-destructive">
                 {potencia.error}{' '}
@@ -78,7 +81,7 @@ export function DashboardPage() {
                     <p className="text-sm text-muted-foreground">Eficiência média</p>
                     <p className="text-2xl font-bold">
                       {potencia.data?.kwh_por_kwp_geral != null
-                        ? `${potencia.data.kwh_por_kwp_geral.toFixed(2)} kWh/kWp`
+                        ? `${potencia.data.kwh_por_kwp_geral.toFixed(3)} kWh/kWp`
                         : '--'}
                     </p>
                   </div>

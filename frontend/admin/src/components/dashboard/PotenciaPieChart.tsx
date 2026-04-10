@@ -28,7 +28,7 @@ export function PotenciaPieChart({ data }: PotenciaPieChartProps) {
           cx="50%"
           cy="50%"
           outerRadius={100}
-          label={({ name, value }) => `${name}: ${Number(value).toFixed(0)} kWh`}
+          label={({ name, value }) => `${name}: ${Number(value).toFixed(3)} kWh`}
         >
           {dadosFiltrados.map((_, index) => (
             <Cell key={index} fill={CORES[index % CORES.length]} />
@@ -36,7 +36,7 @@ export function PotenciaPieChart({ data }: PotenciaPieChartProps) {
         </Pie>
         <Tooltip
           formatter={(value) => {
-            const kwh = typeof value === 'number' ? value.toFixed(1) : String(value)
+            const kwh = typeof value === 'number' ? value.toFixed(3) : String(value)
             return [kwh + ' kWh', 'Energia hoje']
           }}
         />
