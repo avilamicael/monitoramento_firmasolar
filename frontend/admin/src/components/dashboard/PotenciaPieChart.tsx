@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { formatarNumero } from '@/lib/format'
 import type { ProvedorPotencia } from '@/types/analytics'
 
 const CORES = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe']
@@ -28,7 +29,7 @@ export function PotenciaPieChart({ data }: PotenciaPieChartProps) {
           cx="50%"
           cy="50%"
           outerRadius={100}
-          label={({ name, value }) => `${name}: ${Number(value).toFixed(3)} kWh`}
+          label={({ name, value }) => `${name}: ${formatarNumero(Number(value))} kWh`}
         >
           {dadosFiltrados.map((_, index) => (
             <Cell key={index} fill={CORES[index % CORES.length]} />
@@ -36,7 +37,7 @@ export function PotenciaPieChart({ data }: PotenciaPieChartProps) {
         </Pie>
         <Tooltip
           formatter={(value) => {
-            const kwh = typeof value === 'number' ? value.toFixed(3) : String(value)
+            const kwh = typeof value === 'number' ? formatarNumero(value) : String(value)
             return [kwh + ' kWh', 'Energia hoje']
           }}
         />

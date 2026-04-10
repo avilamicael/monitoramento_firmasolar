@@ -1,6 +1,7 @@
 import { ZapIcon, DollarSignIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { formatarEnergia, formatarMoeda } from '@/lib/format'
 import type { EnergiaResumo } from '@/types/analytics'
 
 interface EnergiaCardsProps {
@@ -11,17 +12,6 @@ interface EnergiaCardsProps {
 }
 
 const CUSTO_KWH = 0.88
-
-function formatarEnergia(kwh: number): string {
-  if (kwh >= 1000) {
-    return `${(kwh / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MWh`
-  }
-  return `${kwh.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kWh`
-}
-
-function formatarMoeda(valor: number): string {
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
 
 export function EnergiaCards({ data, loading, error, onRetry }: EnergiaCardsProps) {
   if (error) {

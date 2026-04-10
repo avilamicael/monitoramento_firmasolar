@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { formatarNumero, formatarEnergia } from '@/lib/format'
 import { EnergiaCards } from '@/components/dashboard/EnergiaCards'
 import { AlertasCards } from '@/components/dashboard/AlertasCards'
 import { PotenciaPieChart } from '@/components/dashboard/PotenciaPieChart'
@@ -73,7 +74,7 @@ export function DashboardPage() {
                     <p className="text-sm text-muted-foreground">Energia hoje (total)</p>
                     <p className="text-2xl font-bold">
                       {potencia.data?.energia_hoje_geral_kwh != null
-                        ? `${potencia.data.energia_hoje_geral_kwh.toFixed(0)} kWh`
+                        ? formatarEnergia(potencia.data.energia_hoje_geral_kwh)
                         : '--'}
                     </p>
                   </div>
@@ -81,7 +82,7 @@ export function DashboardPage() {
                     <p className="text-sm text-muted-foreground">Eficiência média</p>
                     <p className="text-2xl font-bold">
                       {potencia.data?.kwh_por_kwp_geral != null
-                        ? `${potencia.data.kwh_por_kwp_geral.toFixed(3)} kWh/kWp`
+                        ? `${formatarNumero(potencia.data.kwh_por_kwp_geral)} kWh/kWp`
                         : '--'}
                     </p>
                   </div>
