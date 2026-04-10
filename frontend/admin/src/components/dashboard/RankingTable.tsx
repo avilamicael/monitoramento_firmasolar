@@ -8,10 +8,10 @@ import {
 } from '@/components/ui/table'
 import type { ProvedorRanking } from '@/types/analytics'
 
-interface RankingTableProps {
+export interface RankingTableProps {
   ranking: ProvedorRanking[]
-  selectedProvedor: string | null
-  onSelectProvedor: (provedor: string | null) => void
+  selectedProvedor?: string | null
+  onSelectProvedor?: (provedor: string | null) => void
 }
 
 export function RankingTable({ ranking, selectedProvedor, onSelectProvedor }: RankingTableProps) {
@@ -37,7 +37,7 @@ export function RankingTable({ ranking, selectedProvedor, onSelectProvedor }: Ra
           <TableRow
             key={item.provedor}
             onClick={() =>
-              onSelectProvedor(item.provedor === selectedProvedor ? null : item.provedor)
+              onSelectProvedor?.(item.provedor === selectedProvedor ? null : item.provedor)
             }
             className={
               item.provedor === selectedProvedor
