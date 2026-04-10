@@ -8,3 +8,8 @@ data/
 
 # Chave SSH da VPS
 *.pem
+
+# Pastas temporárias de ferramentas
+.playwright-mcp/
+.clone/
+.planning/
