@@ -10,10 +10,10 @@ app.autodiscover_tasks()
 
 # ── Agendamentos ───────────────────────────────────────────────────────────────
 app.conf.beat_schedule = {
-    # Coleta dados de todos os provedores ativos a cada 10 minutos
+    # Coleta dados de todos os provedores ativos a cada 30 minutos
     'coletar-todos-provedores': {
         'task': 'coleta.tasks.disparar_coleta_geral',
-        'schedule': crontab(minute='*/10'),
+        'schedule': crontab(minute='*/30'),
     },
     # Renova tokens de provedores com sessão (Hoymiles, FusionSolar) a cada 6h
     'renovar-tokens': {

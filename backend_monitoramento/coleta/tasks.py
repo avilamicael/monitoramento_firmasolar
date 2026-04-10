@@ -1,7 +1,7 @@
 """
 Tasks Celery do sistema de coleta.
 
-disparar_coleta_geral   — agendada a cada 10min — inicia coleta de todos os provedores ativos
+disparar_coleta_geral   — agendada a cada 30min — inicia coleta de todos os provedores ativos
 coletar_dados_provedor  — executa a coleta de um provedor específico
 renovar_tokens_provedores — agendada a cada 6h — renova tokens de sessão (Hoymiles, FusionSolar)
 limpar_snapshots_antigos  — agendada às 3h — remove snapshots com mais de 90 dias
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 def disparar_coleta_geral():
     """
     Inicia a coleta de dados para todos os provedores ativos.
-    Chamada automaticamente pelo Celery Beat a cada 10 minutos.
+    Chamada automaticamente pelo Celery Beat a cada 30 minutos.
     """
     credenciais = CredencialProvedor.objects.filter(ativo=True)
     total = 0

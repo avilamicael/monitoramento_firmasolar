@@ -12,6 +12,7 @@ class CredencialProvedor(models.Model):
         ('hoymiles',    'Hoymiles S-Cloud'),
         ('fusionsolar', 'Huawei FusionSolar'),
         ('solarman',    'Solarman Pro'),
+        ('auxsol',      'AuxSol Cloud'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -24,6 +25,11 @@ class CredencialProvedor(models.Model):
     ativo = models.BooleanField(default=True)
     # Marcado como True quando há falha de autenticação — requer atenção manual
     precisa_atencao = models.BooleanField(default=False)
+    # Intervalo entre coletas em minutos (configurável pelo admin, mínimo 30)
+    intervalo_coleta_minutos = models.PositiveIntegerField(
+        default=30,
+        help_text='Intervalo entre coletas em minutos. Mínimo: 30 minutos.',
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
