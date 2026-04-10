@@ -8,13 +8,12 @@ interface PotenciaPieChartProps {
 }
 
 export function PotenciaPieChart({ data }: PotenciaPieChartProps) {
-  // Filtrar provedores sem dados de potencia (media_kw null ou zero)
-  const dadosFiltrados = data.filter((p) => p.media_kw !== null && p.media_kw > 0)
+  const dadosFiltrados = data.filter((p) => p.energia_hoje_kwh > 0)
 
   if (dadosFiltrados.length === 0) {
     return (
       <p className="text-muted-foreground text-center py-8">
-        Sem dados de potencia disponiveis
+        Sem dados de geração disponíveis
       </p>
     )
   }
@@ -24,12 +23,12 @@ export function PotenciaPieChart({ data }: PotenciaPieChartProps) {
       <PieChart>
         <Pie
           data={dadosFiltrados}
-          dataKey="media_kw"
+          dataKey="energia_hoje_kwh"
           nameKey="provedor"
           cx="50%"
           cy="50%"
           outerRadius={100}
-          label
+          label={({ name, value }) => `${name}: ${Number(value).toFixed(0)} kWh`}
         >
           {dadosFiltrados.map((_, index) => (
             <Cell key={index} fill={CORES[index % CORES.length]} />
@@ -37,8 +36,8 @@ export function PotenciaPieChart({ data }: PotenciaPieChartProps) {
         </Pie>
         <Tooltip
           formatter={(value) => {
-            const kw = typeof value === 'number' ? value.toFixed(2) : String(value)
-            return [kw + ' kW', 'Potencia media']
+            const kwh = typeof value === 'number' ? value.toFixed(1) : String(value)
+            return [kwh + ' kWh', 'Energia hoje']
           }}
         />
         <Legend />

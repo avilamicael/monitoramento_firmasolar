@@ -65,13 +65,23 @@ export function DashboardPage() {
               <Skeleton className="h-[300px] w-full" />
             ) : (
               <div className="space-y-4">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Potência média geral</p>
-                  <p className="text-3xl font-bold">
-                    {potencia.data?.media_geral_kw != null
-                      ? `${potencia.data.media_geral_kw.toFixed(2)} kW`
-                      : '--'}
-                  </p>
+                <div className="flex justify-around text-center">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Energia hoje (total)</p>
+                    <p className="text-2xl font-bold">
+                      {potencia.data?.energia_hoje_geral_kwh != null
+                        ? `${potencia.data.energia_hoje_geral_kwh.toFixed(0)} kWh`
+                        : '--'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Eficiência média</p>
+                    <p className="text-2xl font-bold">
+                      {potencia.data?.kwh_por_kwp_geral != null
+                        ? `${potencia.data.kwh_por_kwp_geral.toFixed(2)} kWh/kWp`
+                        : '--'}
+                    </p>
+                  </div>
                 </div>
                 <PotenciaPieChart data={potencia.data?.por_provedor ?? []} />
               </div>

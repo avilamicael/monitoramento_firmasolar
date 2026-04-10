@@ -1,11 +1,14 @@
 export interface ProvedorPotencia {
   provedor: string
-  media_kw: number | null
+  energia_hoje_kwh: number
+  capacidade_kwp: number
+  kwh_por_kwp: number
   usinas_ativas: number
 }
 
 export interface PotenciaResponse {
-  media_geral_kw: number | null
+  energia_hoje_geral_kwh: number
+  kwh_por_kwp_geral: number
   por_provedor: ProvedorPotencia[]
 }
 

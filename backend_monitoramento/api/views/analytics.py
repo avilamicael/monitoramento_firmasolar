@@ -15,10 +15,15 @@ from api.serializers.analytics import UsinaMapaSerializer
 class PotenciaMediaView(APIView):
     """
     GET /api/analytics/potencia/
-    ANA-01: potencia media geral + agrupada por provedor.
-    Fonte: Usina.ultimo_snapshot.potencia_kw (D-02).
-    Exclui usinas sem snapshot do calculo.
-    Sem N+1: select_related('ultimo_snapshot') + Avg via ORM.
+    ANA-01: geracao media por provedor.
+
+    Retorna duas metricas por provedor:
+    - energia_hoje_kwh: soma de energia gerada hoje por todas as usinas do provedor
+    - kwh_por_kwp: eficiencia = energia_hoje_kwh / capacidade_kwp_total
+      (normaliza pelo tamanho — permite comparar provedores de portes diferentes)
+
+    Usa energia_hoje em vez de potencia instantanea pq FusionSolar nao retorna
+    potencia em tempo real via getStationRealKpi.
     """
 
     def get(self, request):
@@ -28,21 +33,32 @@ class PotenciaMediaView(APIView):
             .select_related('ultimo_snapshot')
         )
 
-        resultado = qs.aggregate(media_geral=Avg('ultimo_snapshot__potencia_kw'))
-        media_geral = resultado['media_geral']
+        totais = qs.aggregate(
+            energia_hoje=Sum('ultimo_snapshot__energia_hoje_kwh'),
+            capacidade_total=Sum('capacidade_kwp'),
+        )
+        energia_hoje_geral = totais['energia_hoje'] or 0
+        capacidade_geral = totais['capacidade_total'] or 0
 
         por_provedor = list(
             qs
             .values('provedor')
             .annotate(
-                media_kw=Avg('ultimo_snapshot__potencia_kw'),
+                energia_hoje_kwh=Sum('ultimo_snapshot__energia_hoje_kwh'),
+                capacidade_kwp=Sum('capacidade_kwp'),
                 usinas_ativas=Count('id'),
             )
             .order_by('provedor')
         )
 
+        # Calcular eficiencia (kWh/kWp) por provedor
+        for p in por_provedor:
+            cap = p['capacidade_kwp'] or 0
+            p['kwh_por_kwp'] = round(p['energia_hoje_kwh'] / cap, 2) if cap > 0 else 0
+
         return Response({
-            'media_geral_kw': media_geral,
+            'energia_hoje_geral_kwh': round(energia_hoje_geral, 2),
+            'kwh_por_kwp_geral': round(energia_hoje_geral / capacidade_geral, 2) if capacidade_geral > 0 else 0,
             'por_provedor': por_provedor,
         })
 
