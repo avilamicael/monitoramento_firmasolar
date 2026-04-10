@@ -1,12 +1,9 @@
-import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EnergiaCards } from '@/components/dashboard/EnergiaCards'
 import { AlertasCards } from '@/components/dashboard/AlertasCards'
 import { PotenciaPieChart } from '@/components/dashboard/PotenciaPieChart'
 import { RankingTable } from '@/components/dashboard/RankingTable'
-import { MapaUsinas } from '@/components/dashboard/MapaUsinas'
-import { UsinasPorCidadeChart } from '@/components/dashboard/UsinasPorCidadeChart'
 import { GeracaoDiariaChart } from '@/components/dashboard/GeracaoDiariaChart'
 import { AlertasCriticosTable } from '@/components/dashboard/AlertasCriticosTable'
 import {
@@ -14,23 +11,17 @@ import {
   useAlertasResumo,
   useAnalyticsPotencia,
   useAnalyticsRanking,
-  useAnalyticsMapa,
   useGeracaoDiaria,
 } from '@/hooks/use-analytics'
 import { useAlertas } from '@/hooks/use-alertas'
-import { useUsinas } from '@/hooks/use-usinas'
 
 export function DashboardPage() {
   const energia = useEnergiaResumo()
   const alertasResumo = useAlertasResumo()
   const potencia = useAnalyticsPotencia()
   const ranking = useAnalyticsRanking()
-  const mapa = useAnalyticsMapa()
   const geracao = useGeracaoDiaria(30)
   const alertasCriticos = useAlertas({ estado: 'ativo', nivel: 'critico' })
-  const usinas = useUsinas()
-
-  const [selectedProvedor, setSelectedProvedor] = useState<string | null>(null)
 
   return (
     <div className="space-y-6">
@@ -56,7 +47,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Potencia Media por Fabricante</CardTitle>
+            <CardTitle>Potência Média por Fabricante</CardTitle>
             {potencia.error && (
               <CardDescription className="text-destructive">
                 {potencia.error}{' '}
@@ -75,7 +66,7 @@ export function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Potencia media geral</p>
+                  <p className="text-sm text-muted-foreground">Potência média geral</p>
                   <p className="text-3xl font-bold">
                     {potencia.data?.media_geral_kw != null
                       ? `${potencia.data.media_geral_kw.toFixed(2)} kW`
@@ -107,74 +98,16 @@ export function DashboardPage() {
             {ranking.loading ? (
               <Skeleton className="h-[300px] w-full" />
             ) : (
-              <RankingTable
-                ranking={(ranking.data?.ranking ?? []).slice(0, 5)}
-                selectedProvedor={selectedProvedor}
-                onSelectProvedor={setSelectedProvedor}
-              />
+              <RankingTable ranking={(ranking.data?.ranking ?? []).slice(0, 5)} />
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Linha 4 — Mapa com todos os clientes */}
+      {/* Linha 4 — Gráfico de geração diária */}
       <Card>
         <CardHeader>
-          <CardTitle>Mapa de Usinas</CardTitle>
-          {mapa.error && (
-            <CardDescription className="text-destructive">
-              {mapa.error}{' '}
-              <button
-                onClick={() => void mapa.refetch()}
-                className="underline hover:no-underline"
-              >
-                Tentar novamente
-              </button>
-            </CardDescription>
-          )}
-        </CardHeader>
-        <CardContent>
-          {mapa.loading ? (
-            <Skeleton className="h-[400px] w-full" />
-          ) : (
-            <MapaUsinas
-              usinas={mapa.data ?? []}
-              filtroProvedor={selectedProvedor}
-              onLimparFiltro={() => setSelectedProvedor(null)}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Linha 5 — Usinas por cidade */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Usinas por Cidade</CardTitle>
-          {usinas.error && (
-            <CardDescription className="text-destructive">
-              {usinas.error}{' '}
-              <button
-                onClick={() => void usinas.refetch()}
-                className="underline hover:no-underline"
-              >
-                Tentar novamente
-              </button>
-            </CardDescription>
-          )}
-        </CardHeader>
-        <CardContent>
-          {usinas.loading ? (
-            <Skeleton className="h-[300px] w-full" />
-          ) : (
-            <UsinasPorCidadeChart usinas={usinas.data?.results ?? []} />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Linha 6 — Grafico de geracao diaria */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Geracao de Energia (Ultimos 30 dias)</CardTitle>
+          <CardTitle>Geração de Energia (Últimos 30 dias)</CardTitle>
         </CardHeader>
         <CardContent>
           <GeracaoDiariaChart
@@ -186,10 +119,10 @@ export function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Linha 7 — Tabela de alertas criticos */}
+      {/* Linha 5 — Tabela de alertas críticos */}
       <Card>
         <CardHeader>
-          <CardTitle>Alertas Criticos Ativos</CardTitle>
+          <CardTitle>Alertas Críticos Ativos</CardTitle>
           <CardDescription>
             Clique em um alerta para ver mais detalhes
           </CardDescription>
