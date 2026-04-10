@@ -50,9 +50,10 @@ class PotenciaMediaView(APIView):
 class RankingFabricantesView(APIView):
     """
     GET /api/analytics/ranking-fabricantes/
-    ANA-02: top 5 provedores por inversores ativos.
-    Criterio de ativo: ultimo_snapshot nao null E pac_kw > 0 (D-03).
-    Usa values(provedor=F('usina__provedor')) para evitar chave usina__provedor nos dicts.
+    ANA-02: top 5 provedores por inversores monitorados.
+    Criterio: inversor com ultimo_snapshot nao null (esta sendo coletado).
+    Nota: pac_kw > 0 nao funciona para microinversores Hoymiles cujos dados
+    eletricos individuais nao sao populados pela API (dados vem agregados na usina).
     """
 
     def get(self, request):
@@ -64,7 +65,6 @@ class RankingFabricantesView(APIView):
                     'id',
                     filter=Q(
                         ultimo_snapshot__isnull=False,
-                        ultimo_snapshot__pac_kw__gt=0,
                     )
                 )
             )
