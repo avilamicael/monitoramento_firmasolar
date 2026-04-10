@@ -5,3 +5,6 @@ CLAUDE.md
 data/
 
 .env
+
+# Chave SSH da VPS
+*.pem
