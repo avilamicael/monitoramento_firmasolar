@@ -14,10 +14,11 @@ class UsinaFilterSet(django_filters.FilterSet):
     provedor = django_filters.CharFilter(field_name='provedor', lookup_expr='exact')
     ativo = django_filters.BooleanFilter(field_name='ativo')
     status_garantia = django_filters.CharFilter(method='filtrar_status_garantia')
+    nome = django_filters.CharFilter(field_name='nome', lookup_expr='icontains')
 
     class Meta:
         model = Usina
-        fields = ['provedor', 'ativo']
+        fields = ['provedor', 'ativo', 'nome']
 
     def filtrar_status_garantia(self, queryset, name, value):
         """

@@ -6,6 +6,7 @@ interface UseUsinasParams {
   provedor?: string
   ativo?: boolean
   status_garantia?: StatusGarantia
+  nome?: string
   page?: number
 }
 
