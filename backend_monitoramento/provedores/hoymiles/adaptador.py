@@ -120,9 +120,10 @@ class HoymilesAdaptador(AdaptadorProvedor):
             nome=r.get('name') or '(sem nome)',
             capacidade_kwp=_para_float(r.get('capacitor') or r.get('capacity')),
             potencia_atual_kw=potencia_w / 1000 if potencia_w else 0.0,
-            energia_hoje_kwh=_para_float(rt.get('today_eq')),
-            energia_mes_kwh=_para_float(rt.get('month_eq')),
-            energia_total_kwh=_para_float(rt.get('total_eq')),
+            # Hoymiles retorna energia em Wh — converter para kWh
+            energia_hoje_kwh=_para_float(rt.get('today_eq')) / 1000,
+            energia_mes_kwh=_para_float(rt.get('month_eq')) / 1000,
+            energia_total_kwh=_para_float(rt.get('total_eq')) / 1000,
             status=_normalizar_status(r.get('status')),
             data_medicao=datetime.now(timezone.utc),
             fuso_horario=r.get('tz_name') or 'America/Sao_Paulo',
