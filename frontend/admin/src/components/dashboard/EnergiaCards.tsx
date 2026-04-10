@@ -44,9 +44,14 @@ export function EnergiaCards({ data, loading, error, onRetry }: EnergiaCardsProp
           {loading ? (
             <Skeleton className="h-8 w-36" />
           ) : (
-            <p className="text-2xl font-bold">
-              {data ? formatarEnergia(data.energia_total_kwh) : '--'}
-            </p>
+            <>
+              <p className="text-2xl font-bold">
+                {data ? formatarEnergia(data.energia_total_kwh) : '--'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Soma da energia total acumulada de todas as usinas ativas
+              </p>
+            </>
           )}
         </CardContent>
       </Card>
@@ -62,9 +67,14 @@ export function EnergiaCards({ data, loading, error, onRetry }: EnergiaCardsProp
           {loading ? (
             <Skeleton className="h-8 w-36" />
           ) : (
-            <p className="text-2xl font-bold">
-              {data ? formatarMoeda(data.energia_total_kwh * CUSTO_KWH) : '--'}
-            </p>
+            <>
+              <p className="text-2xl font-bold">
+                {data ? formatarMoeda(data.energia_total_kwh * CUSTO_KWH) : '--'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Energia total × R$ 0,88/kWh
+              </p>
+            </>
           )}
         </CardContent>
       </Card>

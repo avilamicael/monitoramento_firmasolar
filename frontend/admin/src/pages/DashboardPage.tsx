@@ -49,9 +49,6 @@ export function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Geração por Fabricante</CardTitle>
-            <CardDescription>
-              Energia gerada hoje por provedor. Eficiência = energia hoje (kWh) ÷ capacidade instalada (kWp).
-            </CardDescription>
             {potencia.error && (
               <CardDescription className="text-destructive">
                 {potencia.error}{' '}
@@ -88,6 +85,9 @@ export function DashboardPage() {
                   </div>
                 </div>
                 <PotenciaPieChart data={potencia.data?.por_provedor ?? []} />
+                <p className="text-xs text-muted-foreground">
+                  Eficiência = energia gerada hoje (kWh) ÷ capacidade instalada (kWp)
+                </p>
               </div>
             )}
           </CardContent>
@@ -95,7 +95,7 @@ export function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Ranking Top 5 Fabricantes</CardTitle>
+            <CardTitle>Top 5 Fabricantes</CardTitle>
             {ranking.error && (
               <CardDescription className="text-destructive">
                 {ranking.error}{' '}
