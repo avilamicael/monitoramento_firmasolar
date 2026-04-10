@@ -74,6 +74,14 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  admin:
+    build: ../frontend/admin
+    ports:
+      - "127.0.0.1:3001:80"
+    depends_on:
+      - web
+    restart: unless-stopped
+
   evolution-api:
     image: evoapicloud/evolution-api:latest
     volumes:
