@@ -6,6 +6,7 @@ interface UseAlertasParams {
   estado?: EstadoAlerta
   nivel?: NivelAlerta
   origem?: OrigemAlerta
+  provedor?: string
   usina?: string
   page?: number
 }

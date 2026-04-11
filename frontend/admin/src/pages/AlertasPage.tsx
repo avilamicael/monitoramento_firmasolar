@@ -24,11 +24,13 @@ const PAGE_SIZE = 20
 export function AlertasPage() {
   const [estado, setEstado] = useState<EstadoAlerta | 'all'>('ativo')
   const [nivel, setNivel] = useState<NivelAlerta | 'all'>('all')
+  const [provedor, setProvedor] = useState<string>('all')
   const [page, setPage] = useState(1)
 
   const { data, loading, error, refetch } = useAlertas({
     estado: estado === 'all' ? undefined : estado,
     nivel: nivel === 'all' ? undefined : nivel,
+    provedor: provedor === 'all' ? undefined : provedor,
     page,
   })
 
@@ -74,6 +76,22 @@ export function AlertasPage() {
                   <SelectItem value="aviso">Aviso</SelectItem>
                   <SelectItem value="importante">Importante</SelectItem>
                   <SelectItem value="critico">Critico</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Provedor:</span>
+              <Select value={provedor} onValueChange={handleFilterChange((v) => setProvedor(v))}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="solis">Solis</SelectItem>
+                  <SelectItem value="hoymiles">Hoymiles</SelectItem>
+                  <SelectItem value="fusionsolar">FusionSolar</SelectItem>
+                  <SelectItem value="auxsol">AuxSol</SelectItem>
+                  <SelectItem value="solarman">Solarman</SelectItem>
                 </SelectContent>
               </Select>
             </div>
