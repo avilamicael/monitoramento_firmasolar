@@ -20,7 +20,6 @@ interface AlertaEstadoFormProps {
 
 const ESTADO_OPCOES: { value: EstadoAlerta; label: string }[] = [
   { value: 'ativo', label: 'Ativo' },
-  { value: 'em_atendimento', label: 'Em atendimento' },
   { value: 'resolvido', label: 'Resolvido' },
 ]
 

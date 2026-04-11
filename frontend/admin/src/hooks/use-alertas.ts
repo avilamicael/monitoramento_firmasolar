@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '@/lib/api'
-import type { AlertaDetalhe, EstadoAlerta, NivelAlerta, PaginatedAlertas } from '@/types/alertas'
+import type { AlertaDetalhe, EstadoAlerta, NivelAlerta, OrigemAlerta, PaginatedAlertas } from '@/types/alertas'
 
 interface UseAlertasParams {
   estado?: EstadoAlerta
   nivel?: NivelAlerta
+  origem?: OrigemAlerta
   usina?: string
   page?: number
 }

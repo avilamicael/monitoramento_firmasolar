@@ -16,7 +16,7 @@ interface AlertasTableProps {
 }
 
 const NIVEL_CONFIG: Record<NivelAlerta, { label: string; className?: string; variant?: 'destructive' | 'secondary' | 'outline' }> = {
-  critico: { label: 'Crítico', variant: 'destructive' },
+  critico: { label: 'Critico', variant: 'destructive' },
   importante: { label: 'Importante', className: 'bg-orange-100 text-orange-800 hover:bg-orange-100' },
   aviso: { label: 'Aviso', variant: 'secondary' },
   info: { label: 'Info', variant: 'outline' },
@@ -24,8 +24,19 @@ const NIVEL_CONFIG: Record<NivelAlerta, { label: string; className?: string; var
 
 const ESTADO_LABEL: Record<EstadoAlerta, string> = {
   ativo: 'Ativo',
-  em_atendimento: 'Em atendimento',
   resolvido: 'Resolvido',
+}
+
+const CATEGORIA_LABELS: Record<string, string> = {
+  tensao_zero: 'Tensao zero',
+  sobretensao: 'Sobretensao',
+  corrente_baixa: 'Corrente baixa',
+  sem_geracao_diurna: 'Sem geracao (dia)',
+  sem_comunicacao: 'Sem comunicacao',
+  geracao_abaixo: 'Geracao abaixo',
+  geracao_acima: 'Geracao acima',
+  temperatura_alta: 'Temperatura alta',
+  outro: 'Outro',
 }
 
 export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
@@ -34,17 +45,18 @@ export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
       <TableHeader>
         <TableRow>
           <TableHead>Usina</TableHead>
+          <TableHead>Origem</TableHead>
           <TableHead>Mensagem</TableHead>
-          <TableHead>Nível</TableHead>
+          <TableHead>Nivel</TableHead>
           <TableHead>Estado</TableHead>
-          <TableHead>Com Garantia</TableHead>
+          <TableHead>Categoria</TableHead>
           <TableHead>Data</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {alertas.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-muted-foreground">
+            <TableCell colSpan={7} className="text-center text-muted-foreground">
               Nenhum alerta encontrado
             </TableCell>
           </TableRow>
@@ -61,6 +73,13 @@ export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
                     {alerta.usina_nome}
                   </Link>
                 </TableCell>
+                <TableCell>
+                  {alerta.origem === 'interno' ? (
+                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Interno</Badge>
+                  ) : (
+                    <Badge variant="outline">Provedor</Badge>
+                  )}
+                </TableCell>
                 <TableCell className="max-w-xs truncate">{alerta.mensagem}</TableCell>
                 <TableCell>
                   {nivelConfig.className ? (
@@ -69,13 +88,13 @@ export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
                     <Badge variant={nivelConfig.variant}>{nivelConfig.label}</Badge>
                   )}
                 </TableCell>
-                <TableCell>{ESTADO_LABEL[alerta.estado]}</TableCell>
+                <TableCell>{ESTADO_LABEL[alerta.estado] || alerta.estado}</TableCell>
                 <TableCell>
-                  {alerta.com_garantia ? (
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Sim</Badge>
-                  ) : (
-                    <Badge variant="secondary">Não</Badge>
-                  )}
+                  {alerta.categoria ? (
+                    <span className="text-xs text-muted-foreground">
+                      {CATEGORIA_LABELS[alerta.categoria] || alerta.categoria}
+                    </span>
+                  ) : '—'}
                 </TableCell>
                 <TableCell>
                   {new Date(alerta.inicio).toLocaleDateString('pt-BR')}

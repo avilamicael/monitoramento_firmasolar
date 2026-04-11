@@ -9,7 +9,7 @@ import { useAlerta } from '@/hooks/use-alertas'
 import type { NivelAlerta, EstadoAlerta } from '@/types/alertas'
 
 const NIVEL_CONFIG: Record<NivelAlerta, { label: string; className?: string; variant?: 'destructive' | 'secondary' | 'outline' }> = {
-  critico: { label: 'Crítico', variant: 'destructive' },
+  critico: { label: 'Critico', variant: 'destructive' },
   importante: { label: 'Importante', className: 'bg-orange-100 text-orange-800 hover:bg-orange-100' },
   aviso: { label: 'Aviso', variant: 'secondary' },
   info: { label: 'Info', variant: 'outline' },
@@ -17,8 +17,19 @@ const NIVEL_CONFIG: Record<NivelAlerta, { label: string; className?: string; var
 
 const ESTADO_LABEL: Record<EstadoAlerta, string> = {
   ativo: 'Ativo',
-  em_atendimento: 'Em atendimento',
   resolvido: 'Resolvido',
+}
+
+const CATEGORIA_LABELS: Record<string, string> = {
+  tensao_zero: 'Tensao zero — usina desligada',
+  sobretensao: 'Sobretensao — tensao AC >= 240V',
+  corrente_baixa: 'Corrente baixa prolongada',
+  sem_geracao_diurna: 'Sem geracao em horario comercial (8h-18h)',
+  sem_comunicacao: 'Sem comunicacao — possivel falha de Wi-Fi',
+  geracao_abaixo: 'Geracao abaixo do previsto',
+  geracao_acima: 'Geracao acima do previsto',
+  temperatura_alta: 'Temperatura elevada do inversor',
+  outro: 'Outro',
 }
 
 function NivelBadge({ nivel }: { nivel: NivelAlerta }) {
@@ -77,7 +88,7 @@ export function AlertaDetalhePage() {
           <ArrowLeftIcon className="size-4" />
           Voltar
         </Button>
-        <p className="text-center py-12 text-muted-foreground">Alerta não encontrado</p>
+        <p className="text-center py-12 text-muted-foreground">Alerta nao encontrado</p>
       </div>
     )
   }
@@ -95,7 +106,21 @@ export function AlertaDetalhePage() {
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
-            <CardTitle className="text-lg leading-tight">{data.mensagem}</CardTitle>
+            <div className="space-y-1">
+              <CardTitle className="text-lg leading-tight">{data.mensagem}</CardTitle>
+              <div className="flex items-center gap-2">
+                {data.origem === 'interno' ? (
+                  <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Alerta Interno</Badge>
+                ) : (
+                  <Badge variant="outline">Alerta do Provedor</Badge>
+                )}
+                {data.categoria && (
+                  <span className="text-xs text-muted-foreground">
+                    {CATEGORIA_LABELS[data.categoria] || data.categoria}
+                  </span>
+                )}
+              </div>
+            </div>
             <NivelBadge nivel={data.nivel} />
           </div>
         </CardHeader>
@@ -107,7 +132,7 @@ export function AlertaDetalhePage() {
             </div>
             <div>
               <dt className="text-muted-foreground font-medium">Estado Atual</dt>
-              <dd className="mt-1">{ESTADO_LABEL[data.estado]}</dd>
+              <dd className="mt-1">{ESTADO_LABEL[data.estado] || data.estado}</dd>
             </div>
             {data.equipamento_sn && (
               <div>
@@ -115,14 +140,14 @@ export function AlertaDetalhePage() {
                 <dd className="mt-1 font-mono text-xs">{data.equipamento_sn}</dd>
               </div>
             )}
-            {data.id_alerta_provedor && (
+            {data.id_alerta_provedor && data.origem === 'provedor' && (
               <div>
                 <dt className="text-muted-foreground font-medium">ID Provedor</dt>
                 <dd className="mt-1 font-mono text-xs">{data.id_alerta_provedor}</dd>
               </div>
             )}
             <div>
-              <dt className="text-muted-foreground font-medium">Início</dt>
+              <dt className="text-muted-foreground font-medium">Inicio</dt>
               <dd className="mt-1">{new Date(data.inicio).toLocaleString('pt-BR')}</dd>
             </div>
             <div>
@@ -133,7 +158,7 @@ export function AlertaDetalhePage() {
             </div>
             {data.sugestao && (
               <div className="sm:col-span-2">
-                <dt className="text-muted-foreground font-medium">Sugestão</dt>
+                <dt className="text-muted-foreground font-medium">Sugestao / Diagnostico</dt>
                 <dd className="mt-1">{data.sugestao}</dd>
               </div>
             )}

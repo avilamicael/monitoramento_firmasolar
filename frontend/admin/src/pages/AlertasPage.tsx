@@ -17,31 +17,30 @@ import {
 } from '@/components/ui/pagination'
 import { AlertasTable } from '@/components/alertas/AlertasTable'
 import { useAlertas } from '@/hooks/use-alertas'
-import type { EstadoAlerta, NivelAlerta } from '@/types/alertas'
+import type { EstadoAlerta, NivelAlerta, OrigemAlerta } from '@/types/alertas'
 
 const PAGE_SIZE = 20
 
 export function AlertasPage() {
   const [estado, setEstado] = useState<EstadoAlerta | 'all'>('all')
   const [nivel, setNivel] = useState<NivelAlerta | 'all'>('all')
+  const [origem, setOrigem] = useState<OrigemAlerta | 'all'>('all')
   const [page, setPage] = useState(1)
 
   const { data, loading, error, refetch } = useAlertas({
     estado: estado === 'all' ? undefined : estado,
     nivel: nivel === 'all' ? undefined : nivel,
+    origem: origem === 'all' ? undefined : origem,
     page,
   })
 
   const totalPaginas = data ? Math.ceil(data.count / PAGE_SIZE) : 1
 
-  function handleEstadoChange(value: string) {
-    setEstado(value as EstadoAlerta | 'all')
-    setPage(1)
-  }
-
-  function handleNivelChange(value: string) {
-    setNivel(value as NivelAlerta | 'all')
-    setPage(1)
+  function handleFilterChange(setter: (v: string) => void) {
+    return (value: string) => {
+      setter(value)
+      setPage(1)
+    }
   }
 
   return (
@@ -53,22 +52,34 @@ export function AlertasPage() {
           <CardTitle>Listagem de Alertas</CardTitle>
           <div className="flex flex-wrap gap-3 mt-2">
             <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Origem:</span>
+              <Select value={origem} onValueChange={handleFilterChange((v) => setOrigem(v as OrigemAlerta | 'all'))}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="provedor">Provedor</SelectItem>
+                  <SelectItem value="interno">Interno</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Estado:</span>
-              <Select value={estado} onValueChange={handleEstadoChange}>
+              <Select value={estado} onValueChange={handleFilterChange((v) => setEstado(v as EstadoAlerta | 'all'))}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="em_atendimento">Em atendimento</SelectItem>
                   <SelectItem value="resolvido">Resolvido</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Nível:</span>
-              <Select value={nivel} onValueChange={handleNivelChange}>
+              <span className="text-sm text-muted-foreground">Nivel:</span>
+              <Select value={nivel} onValueChange={handleFilterChange((v) => setNivel(v as NivelAlerta | 'all'))}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -77,7 +88,7 @@ export function AlertasPage() {
                   <SelectItem value="info">Info</SelectItem>
                   <SelectItem value="aviso">Aviso</SelectItem>
                   <SelectItem value="importante">Importante</SelectItem>
-                  <SelectItem value="critico">Crítico</SelectItem>
+                  <SelectItem value="critico">Critico</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -136,7 +147,7 @@ export function AlertasPage() {
             <PaginationItem>
               <PaginationNext
                 href="#"
-                text="Próximo"
+                text="Proximo"
                 onClick={(e) => {
                   e.preventDefault()
                   if (page < totalPaginas) setPage(page + 1)

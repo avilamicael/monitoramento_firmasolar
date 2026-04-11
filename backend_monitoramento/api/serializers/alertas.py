@@ -12,9 +12,9 @@ class AlertaListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Alerta
         fields = [
-            'id', 'usina', 'usina_nome', 'mensagem', 'nivel',
-            'estado', 'inicio', 'fim', 'com_garantia',
-            'criado_em', 'atualizado_em',
+            'id', 'usina', 'usina_nome', 'origem', 'categoria',
+            'mensagem', 'nivel', 'estado', 'inicio', 'fim',
+            'com_garantia', 'criado_em', 'atualizado_em',
         ]
         # payload_bruto EXCLUIDO (T-2-07)
         # notificacao_enviada EXCLUIDO — campo interno de controle
@@ -40,7 +40,7 @@ class AlertaDetalheSerializer(serializers.ModelSerializer):
     class Meta:
         model = Alerta
         fields = [
-            'id', 'usina', 'usina_nome',
+            'id', 'usina', 'usina_nome', 'origem', 'categoria',
             'catalogo_alarme', 'id_alerta_provedor', 'equipamento_sn',
             'mensagem', 'nivel', 'estado', 'inicio', 'fim',
             'sugestao', 'anotacoes', 'com_garantia',

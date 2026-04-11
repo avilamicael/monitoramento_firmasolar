@@ -1,10 +1,23 @@
-export type EstadoAlerta = 'ativo' | 'em_atendimento' | 'resolvido'
+export type EstadoAlerta = 'ativo' | 'resolvido'
 export type NivelAlerta = 'info' | 'aviso' | 'importante' | 'critico'
+export type OrigemAlerta = 'provedor' | 'interno'
+export type CategoriaAlerta =
+  | 'tensao_zero'
+  | 'sobretensao'
+  | 'corrente_baixa'
+  | 'sem_geracao_diurna'
+  | 'sem_comunicacao'
+  | 'geracao_abaixo'
+  | 'geracao_acima'
+  | 'temperatura_alta'
+  | 'outro'
 
 export interface AlertaResumo {
   id: string
   usina: string
   usina_nome: string
+  origem: OrigemAlerta
+  categoria: string
   mensagem: string
   nivel: NivelAlerta
   estado: EstadoAlerta
