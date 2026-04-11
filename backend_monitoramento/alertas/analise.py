@@ -1,9 +1,14 @@
 """
 Analise interna de dados coletados para gerar alertas inteligentes.
 
-Chamado ao final de cada ciclo de coleta, apos sincronizar alertas do provedor.
-Analisa snapshots de usinas e inversores para detectar problemas que os
-provedores nao reportam ou reportam de forma insuficiente.
+Chamado ao final de cada ciclo de coleta, apos salvar snapshots.
+Analisa dados de usinas e inversores para:
+  1. Enriquecer alertas existentes do provedor com diagnostico
+  2. Criar alertas novos para problemas nao reportados pelo provedor
+
+Regra principal: NAO duplicar alertas. Se o provedor ja reportou o problema,
+o sistema enriquece o alerta com categoria e sugestao. Se o provedor nao
+reportou, o sistema cria um alerta novo.
 
 Tipos de alerta:
   Instantaneos (detectados numa unica coleta):
@@ -43,12 +48,7 @@ SEM_COMUNICACAO_MINUTOS = 90
 def analisar_usina(usina: Usina, snapshot: SnapshotUsina, inversores_snapshots: list[tuple[Inversor, SnapshotInversor | None]]) -> None:
     """
     Analisa os dados de uma usina e seus inversores apos a coleta.
-    Cria ou resolve alertas internos conforme as regras definidas.
-
-    Args:
-        usina: instancia da usina
-        snapshot: snapshot da usina recem-coletado
-        inversores_snapshots: lista de tuplas (inversor, snapshot_inversor) da coleta atual
+    Enriquece alertas existentes ou cria novos conforme as regras.
     """
     agora = dj_timezone.now()
 
@@ -64,12 +64,9 @@ def analisar_usina(usina: Usina, snapshot: SnapshotUsina, inversores_snapshots: 
     horario_corrente = HORA_INICIO_CORRENTE <= hora_local < HORA_FIM_CORRENTE
 
     # === Alertas de usina (nivel planta) ===
-
-    # Sem geracao em horario comercial
     if horario_comercial:
         _verificar_sem_geracao_diurna(usina, snapshot, agora)
 
-    # Sem comunicacao
     _verificar_sem_comunicacao(usina, snapshot, agora)
 
     # === Alertas de inversor (nivel equipamento) ===
@@ -84,7 +81,23 @@ def analisar_usina(usina: Usina, snapshot: SnapshotUsina, inversores_snapshots: 
             _verificar_corrente_baixa(usina, inversor, snap_inv, agora)
 
 
-def _criar_ou_manter_alerta(
+def _buscar_alerta_provedor_relacionado(usina: Usina, categoria: str, equipamento_sn: str = '') -> Alerta | None:
+    """
+    Busca um alerta do provedor ativo que possa estar relacionado a esta condicao.
+    Se encontrar, enriquece com categoria e sugestao ao inves de criar duplicata.
+    """
+    filtro = {
+        'usina': usina,
+        'origem': 'provedor',
+        'estado': 'ativo',
+    }
+    if equipamento_sn:
+        filtro['equipamento_sn'] = equipamento_sn
+
+    return Alerta.objects.filter(**filtro).order_by('-inicio').first()
+
+
+def _enriquecer_ou_criar(
     usina: Usina,
     categoria: str,
     chave: str,
@@ -93,9 +106,28 @@ def _criar_ou_manter_alerta(
     sugestao: str = '',
     equipamento_sn: str = '',
 ) -> None:
-    """Cria um alerta interno ou mantem ativo se ja existe."""
-    id_alerta = f'interno_{categoria}_{chave}'
+    """
+    Logica principal: primeiro tenta enriquecer um alerta do provedor existente.
+    Se nao encontrar, cria um alerta interno novo.
+    """
     agora = dj_timezone.now()
+
+    # 1. Tentar enriquecer alerta do provedor
+    alerta_provedor = _buscar_alerta_provedor_relacionado(usina, categoria, equipamento_sn)
+    if alerta_provedor:
+        campos = {}
+        if not alerta_provedor.categoria:
+            campos['categoria'] = categoria
+        if not alerta_provedor.sugestao and sugestao:
+            campos['sugestao'] = sugestao
+        if alerta_provedor.nivel_escalou_para(nivel):
+            campos['nivel'] = nivel
+        if campos:
+            Alerta.objects.filter(pk=alerta_provedor.pk).update(**campos)
+        return
+
+    # 2. Se nao ha alerta do provedor, criar alerta interno (sem duplicar)
+    id_alerta = f'interno_{categoria}_{chave}'
 
     alerta, criado = Alerta.objects.get_or_create(
         usina=usina,
@@ -113,21 +145,16 @@ def _criar_ou_manter_alerta(
     )
 
     if not criado:
-        campos = {}
-        # Reabrir se estava resolvido
+        campos = {'mensagem': mensagem}
         if alerta.estado == 'resolvido':
             campos['estado'] = 'ativo'
             campos['fim'] = None
-        # Atualizar nivel se escalou
         if alerta.nivel_escalou_para(nivel):
             campos['nivel'] = nivel
-        # Atualizar mensagem (pode ter dados atualizados)
-        campos['mensagem'] = mensagem
-        if campos:
-            Alerta.objects.filter(pk=alerta.pk).update(**campos)
+        Alerta.objects.filter(pk=alerta.pk).update(**campos)
 
 
-def _resolver_alerta(usina: Usina, categoria: str, chave: str) -> None:
+def _resolver_alerta_interno(usina: Usina, categoria: str, chave: str) -> None:
     """Resolve um alerta interno se existir e estiver ativo."""
     id_alerta = f'interno_{categoria}_{chave}'
     Alerta.objects.filter(
@@ -144,7 +171,7 @@ def _verificar_sem_geracao_diurna(usina: Usina, snapshot: SnapshotUsina, agora) 
     chave = str(usina.id_usina_provedor)
 
     if snapshot.potencia_kw <= 0:
-        _criar_ou_manter_alerta(
+        _enriquecer_ou_criar(
             usina=usina,
             categoria='sem_geracao_diurna',
             chave=chave,
@@ -153,7 +180,7 @@ def _verificar_sem_geracao_diurna(usina: Usina, snapshot: SnapshotUsina, agora) 
             sugestao='Verificar se ha problema no inversor, disjuntor ou falta de energia na rede.',
         )
     else:
-        _resolver_alerta(usina, 'sem_geracao_diurna', chave)
+        _resolver_alerta_interno(usina, 'sem_geracao_diurna', chave)
 
 
 def _verificar_sem_comunicacao(usina: Usina, snapshot: SnapshotUsina, agora) -> None:
@@ -163,7 +190,7 @@ def _verificar_sem_comunicacao(usina: Usina, snapshot: SnapshotUsina, agora) -> 
 
     if diff > timedelta(minutes=SEM_COMUNICACAO_MINUTOS):
         minutos = int(diff.total_seconds() / 60)
-        _criar_ou_manter_alerta(
+        _enriquecer_ou_criar(
             usina=usina,
             categoria='sem_comunicacao',
             chave=chave,
@@ -172,7 +199,7 @@ def _verificar_sem_comunicacao(usina: Usina, snapshot: SnapshotUsina, agora) -> 
             sugestao='Possivel falha de Wi-Fi ou problema no datalogger. Verificar conexao de internet do local.',
         )
     else:
-        _resolver_alerta(usina, 'sem_comunicacao', chave)
+        _resolver_alerta_interno(usina, 'sem_comunicacao', chave)
 
 
 def _verificar_tensao_zero(usina: Usina, inversor: Inversor, snap: SnapshotInversor, agora) -> None:
@@ -180,7 +207,7 @@ def _verificar_tensao_zero(usina: Usina, inversor: Inversor, snap: SnapshotInver
     chave = inversor.numero_serie
 
     if snap.tensao_ac_v is not None and snap.tensao_ac_v == 0:
-        _criar_ou_manter_alerta(
+        _enriquecer_ou_criar(
             usina=usina,
             categoria='tensao_zero',
             chave=chave,
@@ -190,7 +217,7 @@ def _verificar_tensao_zero(usina: Usina, inversor: Inversor, snap: SnapshotInver
             equipamento_sn=chave,
         )
     else:
-        _resolver_alerta(usina, 'tensao_zero', chave)
+        _resolver_alerta_interno(usina, 'tensao_zero', chave)
 
 
 def _verificar_sobretensao(usina: Usina, inversor: Inversor, snap: SnapshotInversor, agora) -> None:
@@ -198,7 +225,7 @@ def _verificar_sobretensao(usina: Usina, inversor: Inversor, snap: SnapshotInver
     chave = inversor.numero_serie
 
     if snap.tensao_ac_v is not None and snap.tensao_ac_v >= TENSAO_SOBRETENSAO_V:
-        _criar_ou_manter_alerta(
+        _enriquecer_ou_criar(
             usina=usina,
             categoria='sobretensao',
             chave=chave,
@@ -208,7 +235,7 @@ def _verificar_sobretensao(usina: Usina, inversor: Inversor, snap: SnapshotInver
             equipamento_sn=chave,
         )
     else:
-        _resolver_alerta(usina, 'sobretensao', chave)
+        _resolver_alerta_interno(usina, 'sobretensao', chave)
 
 
 def _verificar_corrente_baixa(usina: Usina, inversor: Inversor, snap: SnapshotInversor, agora) -> None:
@@ -218,32 +245,25 @@ def _verificar_corrente_baixa(usina: Usina, inversor: Inversor, snap: SnapshotIn
     """
     chave = inversor.numero_serie
 
-    # Verificar corrente atual
     corrente_ac = snap.corrente_ac_a or 0
     corrente_dc = snap.corrente_dc_a or 0
 
     if corrente_ac > CORRENTE_MINIMA_A or corrente_dc > CORRENTE_MINIMA_A:
-        # Corrente ok — resolver alerta se existia
-        _resolver_alerta(usina, 'corrente_baixa', chave)
+        _resolver_alerta_interno(usina, 'corrente_baixa', chave)
         return
 
     # Corrente baixa agora — verificar ha quanto tempo
     limite = agora - timedelta(hours=CORRENTE_BAIXA_HORAS)
 
-    # Buscar snapshots das ultimas 2 horas deste inversor
     snapshots_recentes = (
         SnapshotInversor.objects
-        .filter(
-            inversor=inversor,
-            coletado_em__gte=limite,
-        )
+        .filter(inversor=inversor, coletado_em__gte=limite)
         .order_by('coletado_em')
     )
 
     if not snapshots_recentes.exists():
         return
 
-    # Verificar se TODOS os snapshots das ultimas 2h tem corrente baixa
     todos_baixos = all(
         (s.corrente_ac_a or 0) <= CORRENTE_MINIMA_A and (s.corrente_dc_a or 0) <= CORRENTE_MINIMA_A
         for s in snapshots_recentes
@@ -252,12 +272,10 @@ def _verificar_corrente_baixa(usina: Usina, inversor: Inversor, snap: SnapshotIn
     if not todos_baixos:
         return
 
-    # Verificar que temos pelo menos 2 snapshots (evitar falso positivo com 1 ponto)
     qtd = snapshots_recentes.count()
     if qtd < 2:
         return
 
-    # Confirmar duracao real (diferenca entre primeiro e ultimo snapshot)
     primeiro = snapshots_recentes.first()
     ultimo = snapshots_recentes.last()
     duracao = ultimo.coletado_em - primeiro.coletado_em
@@ -266,7 +284,7 @@ def _verificar_corrente_baixa(usina: Usina, inversor: Inversor, snap: SnapshotIn
         return
 
     horas = duracao.total_seconds() / 3600
-    _criar_ou_manter_alerta(
+    _enriquecer_ou_criar(
         usina=usina,
         categoria='corrente_baixa',
         chave=chave,
