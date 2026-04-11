@@ -131,22 +131,17 @@ export function AlertaDetalhePage() {
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
-              <CardTitle className="text-lg leading-tight">{data.mensagem}</CardTitle>
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
-                {data.origem === 'interno' ? (
-                  <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Alerta Interno</Badge>
+                <NivelBadge nivel={data.nivel} />
+                {data.categoria ? (
+                  <CardTitle className="text-lg">{CATEGORIA_LABELS[data.categoria] || data.categoria}</CardTitle>
                 ) : (
-                  <Badge variant="outline">Alerta do Provedor</Badge>
-                )}
-                {data.categoria && (
-                  <span className="text-xs text-muted-foreground">
-                    {CATEGORIA_LABELS[data.categoria] || data.categoria}
-                  </span>
+                  <CardTitle className="text-lg">Alerta do Provedor</CardTitle>
                 )}
               </div>
+              <p className="text-sm text-muted-foreground">{data.mensagem}</p>
             </div>
-            <NivelBadge nivel={data.nivel} />
           </div>
         </CardHeader>
         <CardContent>
