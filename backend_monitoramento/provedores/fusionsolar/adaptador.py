@@ -89,15 +89,31 @@ class FusionSolarAdaptador(AdaptadorProvedor):
     def buscar_usinas(self) -> list[DadosUsina]:
         self._garantir_autenticado()
         registros = listar_usinas(self._sessao, self._usuario, self._system_code)
-        usinas = [self._normalizar_usina(r) for r in registros]
 
         # Pré-carrega todos os inversores em lote logo após buscar as usinas.
-        # Isso evita 50 chamadas individuais a /getDevList (uma por usina),
-        # que causaria rate limit 407 da FusionSolar com carteiras grandes.
         codigos = [r.get('stationCode', '') for r in registros if r.get('stationCode')]
         self._cache_inversores = listar_todos_inversores(
             codigos, self._sessao, self._usuario, self._system_code
         )
+
+        # Calcula potência real da usina somando active_power dos inversores,
+        # porque getStationRealKpi retorna total_current_power=None em muitas instalações.
+        potencia_por_usina: dict[str, float] = {}
+        for codigo, devs in self._cache_inversores.items():
+            potencia_por_usina[codigo] = sum(
+                _para_float((d.get('_kpi') or {}).get('active_power'))
+                for d in devs
+            )
+
+        usinas = []
+        for r in registros:
+            usina = self._normalizar_usina(r)
+            codigo = r.get('stationCode', '')
+            potencia_inversores = potencia_por_usina.get(codigo, 0)
+            if potencia_inversores > 0 and usina.potencia_atual_kw == 0:
+                usina.potencia_atual_kw = potencia_inversores
+            usinas.append(usina)
+
         return usinas
 
     def buscar_inversores(self, id_usina_provedor: str) -> list[DadosInversor]:
