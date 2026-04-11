@@ -11,7 +11,17 @@ class AlertaFilterSet(django_filters.FilterSet):
     categoria = django_filters.CharFilter(field_name='categoria', lookup_expr='exact')
     provedor = django_filters.CharFilter(field_name='usina__provedor', lookup_expr='exact')
     usina = django_filters.UUIDFilter(field_name='usina__id')
+    busca = django_filters.CharFilter(method='filtrar_busca')
 
     class Meta:
         model = Alerta
-        fields = ['estado', 'nivel', 'origem', 'categoria', 'provedor', 'usina']
+        fields = ['estado', 'nivel', 'origem', 'categoria', 'provedor', 'usina', 'busca']
+
+    def filtrar_busca(self, queryset, name, value):
+        """Busca por texto livre em nome da usina, mensagem e equipamento."""
+        from django.db.models import Q
+        return queryset.filter(
+            Q(usina__nome__icontains=value) |
+            Q(mensagem__icontains=value) |
+            Q(equipamento_sn__icontains=value)
+        )

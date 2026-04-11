@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { SearchIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -25,12 +27,18 @@ export function AlertasPage() {
   const [estado, setEstado] = useState<EstadoAlerta | 'all'>('ativo')
   const [nivel, setNivel] = useState<NivelAlerta | 'all'>('all')
   const [provedor, setProvedor] = useState<string>('all')
+  const [categoria, setCategoria] = useState<string>('all')
+  const [busca, setBusca] = useState('')
+  const [buscaDebounced, setBuscaDebounced] = useState('')
+  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const [page, setPage] = useState(1)
 
   const { data, loading, error, refetch } = useAlertas({
     estado: estado === 'all' ? undefined : estado,
     nivel: nivel === 'all' ? undefined : nivel,
     provedor: provedor === 'all' ? undefined : provedor,
+    categoria: categoria === 'all' ? undefined : categoria,
+    busca: buscaDebounced || undefined,
     page,
   })
 
@@ -43,6 +51,16 @@ export function AlertasPage() {
     }
   }
 
+  function handleBuscaChange(value: string) {
+    setBusca(value)
+    if (debounceTimer) clearTimeout(debounceTimer)
+    const timer = setTimeout(() => {
+      setBuscaDebounced(value)
+      setPage(1)
+    }, 400)
+    setDebounceTimer(timer)
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Alertas</h1>
@@ -50,50 +68,77 @@ export function AlertasPage() {
       <Card>
         <CardHeader>
           <CardTitle>Listagem de Alertas</CardTitle>
-          <div className="flex flex-wrap gap-3 mt-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Estado:</span>
-              <Select value={estado} onValueChange={handleFilterChange((v) => setEstado(v as EstadoAlerta | 'all'))}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="resolvido">Resolvido</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="space-y-3 mt-2">
+            <div className="relative max-w-sm">
+              <SearchIcon className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por usina, mensagem ou equipamento..."
+                value={busca}
+                onChange={(e) => handleBuscaChange(e.target.value)}
+                className="pl-9"
+              />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Nivel:</span>
-              <Select value={nivel} onValueChange={handleFilterChange((v) => setNivel(v as NivelAlerta | 'all'))}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="info">Info</SelectItem>
-                  <SelectItem value="aviso">Aviso</SelectItem>
-                  <SelectItem value="importante">Importante</SelectItem>
-                  <SelectItem value="critico">Critico</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Provedor:</span>
-              <Select value={provedor} onValueChange={handleFilterChange((v) => setProvedor(v))}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="solis">Solis</SelectItem>
-                  <SelectItem value="hoymiles">Hoymiles</SelectItem>
-                  <SelectItem value="fusionsolar">FusionSolar</SelectItem>
-                  <SelectItem value="auxsol">AuxSol</SelectItem>
-                  <SelectItem value="solarman">Solarman</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Estado:</span>
+                <Select value={estado} onValueChange={handleFilterChange((v) => setEstado(v as EstadoAlerta | 'all'))}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="resolvido">Resolvido</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Nivel:</span>
+                <Select value={nivel} onValueChange={handleFilterChange((v) => setNivel(v as NivelAlerta | 'all'))}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="critico">Critico</SelectItem>
+                    <SelectItem value="importante">Importante</SelectItem>
+                    <SelectItem value="aviso">Aviso</SelectItem>
+                    <SelectItem value="info">Info</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Provedor:</span>
+                <Select value={provedor} onValueChange={handleFilterChange((v) => setProvedor(v))}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="solis">Solis</SelectItem>
+                    <SelectItem value="hoymiles">Hoymiles</SelectItem>
+                    <SelectItem value="fusionsolar">FusionSolar</SelectItem>
+                    <SelectItem value="auxsol">AuxSol</SelectItem>
+                    <SelectItem value="solarman">Solarman</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Categoria:</span>
+                <Select value={categoria} onValueChange={handleFilterChange((v) => setCategoria(v))}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="tensao_zero">Tensao zero</SelectItem>
+                    <SelectItem value="sobretensao">Sobretensao</SelectItem>
+                    <SelectItem value="corrente_baixa">Corrente baixa</SelectItem>
+                    <SelectItem value="sem_geracao_diurna">Sem geracao (dia)</SelectItem>
+                    <SelectItem value="sem_comunicacao">Sem comunicacao</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -113,7 +158,12 @@ export function AlertasPage() {
               Carregando alertas...
             </div>
           ) : (
-            <AlertasTable alertas={data?.results ?? []} />
+            <>
+              <AlertasTable alertas={data?.results ?? []} />
+              <div className="mt-2 text-sm text-muted-foreground">
+                {data?.count ?? 0} alerta{(data?.count ?? 0) !== 1 ? 's' : ''} encontrado{(data?.count ?? 0) !== 1 ? 's' : ''}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -133,7 +183,10 @@ export function AlertasPage() {
                 className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
               />
             </PaginationItem>
-            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((p) => (
+            {Array.from({ length: Math.min(totalPaginas, 5) }, (_, i) => {
+              const start = Math.max(1, Math.min(page - 2, totalPaginas - 4))
+              return start + i
+            }).map((p) => (
               <PaginationItem key={p}>
                 <PaginationLink
                   href="#"

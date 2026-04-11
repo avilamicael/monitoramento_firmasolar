@@ -7,6 +7,8 @@ interface UseAlertasParams {
   nivel?: NivelAlerta
   origem?: OrigemAlerta
   provedor?: string
+  categoria?: string
+  busca?: string
   usina?: string
   page?: number
 }
