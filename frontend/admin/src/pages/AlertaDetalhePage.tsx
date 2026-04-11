@@ -178,7 +178,7 @@ export function AlertaDetalhePage() {
                       rel="noopener noreferrer"
                       className="ml-2 text-primary hover:underline inline-flex items-center gap-1 text-xs"
                     >
-                      Ver no provedor <ExternalLinkIcon className="size-3" />
+                      Ver no site <ExternalLinkIcon className="size-3" />
                     </a>
                   ) : null
                 })()}

@@ -184,19 +184,41 @@ def _verificar_sem_geracao_diurna(usina: Usina, snapshot: SnapshotUsina, agora) 
 
 
 def _verificar_sem_comunicacao(usina: Usina, snapshot: SnapshotUsina, agora) -> None:
-    """Ultima coleta muito antiga — possivel falha de Wi-Fi."""
+    """
+    Verifica se o inversor parou de comunicar com a nuvem.
+    Usa data_medicao (timestamp do provedor) ao inves de coletado_em (nosso sistema).
+    Diferenca importante: nosso sistema pode coletar da API normalmente,
+    mas o inversor pode ter parado de enviar dados ha meses (ex: Wi-Fi caiu).
+    """
     chave = str(usina.id_usina_provedor)
-    diff = agora - snapshot.coletado_em
 
-    if diff > timedelta(minutes=SEM_COMUNICACAO_MINUTOS):
-        minutos = int(diff.total_seconds() / 60)
+    # Usar data_medicao (quando o inversor realmente comunicou)
+    # Fallback para coletado_em se data_medicao nao disponivel
+    ultima_comunicacao = snapshot.data_medicao or snapshot.coletado_em
+    diff = agora - ultima_comunicacao
+
+    if diff > timedelta(days=1):
+        dias = diff.days
+        if dias > 30:
+            nivel = 'critico'
+            mensagem = f'Inversor sem comunicar ha {dias} dias — ultima comunicacao: {ultima_comunicacao.strftime("%d/%m/%Y")}'
+            sugestao = 'Inversor sem comunicacao ha muito tempo. Provavel problema de Wi-Fi ou datalogger desconectado. Necessario visita tecnica.'
+        elif dias > 7:
+            nivel = 'importante'
+            mensagem = f'Inversor sem comunicar ha {dias} dias — ultima comunicacao: {ultima_comunicacao.strftime("%d/%m/%Y %H:%M")}'
+            sugestao = 'Possivel falha de Wi-Fi ou problema no datalogger. Verificar conexao de internet do local.'
+        else:
+            nivel = 'aviso'
+            mensagem = f'Inversor sem comunicar ha {dias} dia(s) — ultima comunicacao: {ultima_comunicacao.strftime("%d/%m/%Y %H:%M")}'
+            sugestao = 'Verificar se houve queda de internet ou reinicio do roteador no local.'
+
         _enriquecer_ou_criar(
             usina=usina,
             categoria='sem_comunicacao',
             chave=chave,
-            nivel='aviso',
-            mensagem=f'Sem comunicacao ha {minutos} minutos — ultima coleta: {snapshot.coletado_em.strftime("%H:%M")}',
-            sugestao='Possivel falha de Wi-Fi ou problema no datalogger. Verificar conexao de internet do local.',
+            nivel=nivel,
+            mensagem=mensagem,
+            sugestao=sugestao,
         )
     else:
         _resolver_alerta_interno(usina, 'sem_comunicacao', chave)
