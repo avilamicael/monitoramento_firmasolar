@@ -17,20 +17,18 @@ import {
 } from '@/components/ui/pagination'
 import { AlertasTable } from '@/components/alertas/AlertasTable'
 import { useAlertas } from '@/hooks/use-alertas'
-import type { EstadoAlerta, NivelAlerta, OrigemAlerta } from '@/types/alertas'
+import type { EstadoAlerta, NivelAlerta } from '@/types/alertas'
 
 const PAGE_SIZE = 20
 
 export function AlertasPage() {
-  const [estado, setEstado] = useState<EstadoAlerta | 'all'>('all')
+  const [estado, setEstado] = useState<EstadoAlerta | 'all'>('ativo')
   const [nivel, setNivel] = useState<NivelAlerta | 'all'>('all')
-  const [origem, setOrigem] = useState<OrigemAlerta | 'all'>('all')
   const [page, setPage] = useState(1)
 
   const { data, loading, error, refetch } = useAlertas({
     estado: estado === 'all' ? undefined : estado,
     nivel: nivel === 'all' ? undefined : nivel,
-    origem: origem === 'all' ? undefined : origem,
     page,
   })
 
@@ -51,19 +49,6 @@ export function AlertasPage() {
         <CardHeader>
           <CardTitle>Listagem de Alertas</CardTitle>
           <div className="flex flex-wrap gap-3 mt-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Origem:</span>
-              <Select value={origem} onValueChange={handleFilterChange((v) => setOrigem(v as OrigemAlerta | 'all'))}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="provedor">Provedor</SelectItem>
-                  <SelectItem value="interno">Interno</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Estado:</span>
               <Select value={estado} onValueChange={handleFilterChange((v) => setEstado(v as EstadoAlerta | 'all'))}>

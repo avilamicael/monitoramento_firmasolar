@@ -45,7 +45,6 @@ export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
       <TableHeader>
         <TableRow>
           <TableHead>Usina</TableHead>
-          <TableHead>Origem</TableHead>
           <TableHead>Mensagem</TableHead>
           <TableHead>Nivel</TableHead>
           <TableHead>Estado</TableHead>
@@ -56,7 +55,7 @@ export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
       <TableBody>
         {alertas.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={7} className="text-center text-muted-foreground">
+            <TableCell colSpan={6} className="text-center text-muted-foreground">
               Nenhum alerta encontrado
             </TableCell>
           </TableRow>
@@ -72,13 +71,6 @@ export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
                   >
                     {alerta.usina_nome}
                   </Link>
-                </TableCell>
-                <TableCell>
-                  {alerta.origem === 'interno' ? (
-                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Interno</Badge>
-                  ) : (
-                    <Badge variant="outline">Provedor</Badge>
-                  )}
                 </TableCell>
                 <TableCell className="max-w-xs truncate">{alerta.mensagem}</TableCell>
                 <TableCell>

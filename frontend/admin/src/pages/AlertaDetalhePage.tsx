@@ -146,14 +146,12 @@ export function AlertaDetalhePage() {
                 <dd className="mt-1 font-mono text-xs">{data.id_alerta_provedor}</dd>
               </div>
             )}
-            <div>
-              <dt className="text-muted-foreground font-medium">Inicio</dt>
-              <dd className="mt-1">{new Date(data.inicio).toLocaleString('pt-BR')}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground font-medium">Fim</dt>
+            <div className="sm:col-span-2">
+              <dt className="text-muted-foreground font-medium">Periodo</dt>
               <dd className="mt-1">
-                {data.fim ? new Date(data.fim).toLocaleString('pt-BR') : '—'}
+                {new Date(data.inicio).toLocaleString('pt-BR')}
+                {' — '}
+                {data.fim ? new Date(data.fim).toLocaleString('pt-BR') : 'Em andamento'}
               </dd>
             </div>
             {data.sugestao && (

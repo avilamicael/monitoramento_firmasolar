@@ -9,6 +9,7 @@ import {
   AlertTriangleIcon,
 } from 'lucide-react'
 import { useUsina } from '@/hooks/use-usinas'
+import { useAlertas } from '@/hooks/use-alertas'
 import { StatusGarantiaBadge } from '@/components/usinas/StatusGarantiaBadge'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -92,9 +93,28 @@ function estadoBadge(estado: string) {
   return <Badge variant="destructive">Offline</Badge>
 }
 
+const NIVEL_CONFIG: Record<string, { label: string; className?: string; variant?: 'destructive' | 'secondary' | 'outline' }> = {
+  critico: { label: 'Critico', variant: 'destructive' },
+  importante: { label: 'Importante', className: 'bg-orange-100 text-orange-800 hover:bg-orange-100' },
+  aviso: { label: 'Aviso', variant: 'secondary' },
+  info: { label: 'Info', variant: 'outline' },
+}
+
+const CATEGORIA_LABELS: Record<string, string> = {
+  tensao_zero: 'Tensao zero',
+  sobretensao: 'Sobretensao',
+  corrente_baixa: 'Corrente baixa',
+  sem_geracao_diurna: 'Sem geracao (dia)',
+  sem_comunicacao: 'Sem comunicacao',
+  geracao_abaixo: 'Geracao abaixo',
+  geracao_acima: 'Geracao acima',
+  temperatura_alta: 'Temperatura alta',
+}
+
 export function UsinaDetalhePage() {
   const { id } = useParams<{ id: string }>()
   const { data, loading, error } = useUsina(id!)
+  const alertas = useAlertas({ usina: id })
 
   if (loading) {
     return (
@@ -332,6 +352,63 @@ export function UsinaDetalhePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Historico de alertas da usina */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangleIcon className="size-4" />
+            Historico de Alertas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {alertas.loading ? (
+            <p className="text-sm text-muted-foreground">Carregando alertas...</p>
+          ) : (alertas.data?.results?.length ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum alerta registrado para esta usina</p>
+          ) : (
+            <div className="space-y-2">
+              {alertas.data!.results.map((alerta) => {
+                const nivelCfg = NIVEL_CONFIG[alerta.nivel] || NIVEL_CONFIG.aviso
+                const resolvido = alerta.estado === 'resolvido'
+                return (
+                  <Link
+                    key={alerta.id}
+                    to={`/alertas/${alerta.id}`}
+                    className={`block rounded-lg border p-3 hover:bg-muted/50 transition-colors ${resolvido ? 'opacity-60' : ''}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2">
+                          {nivelCfg.className ? (
+                            <Badge className={`${nivelCfg.className} text-xs`}>{nivelCfg.label}</Badge>
+                          ) : (
+                            <Badge variant={nivelCfg.variant} className="text-xs">{nivelCfg.label}</Badge>
+                          )}
+                          {resolvido ? (
+                            <Badge variant="outline" className="text-xs">Resolvido</Badge>
+                          ) : (
+                            <Badge variant="destructive" className="text-xs">Ativo</Badge>
+                          )}
+                          {alerta.categoria && (
+                            <span className="text-xs text-muted-foreground">
+                              {CATEGORIA_LABELS[alerta.categoria] || alerta.categoria}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm">{alerta.mensagem}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(alerta.inicio).toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
