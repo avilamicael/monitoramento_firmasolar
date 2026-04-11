@@ -27,15 +27,34 @@ logger = logging.getLogger(__name__)
 @shared_task
 def disparar_coleta_geral():
     """
-    Inicia a coleta de dados para todos os provedores ativos.
-    Chamada automaticamente pelo Celery Beat a cada 30 minutos.
+    Verifica provedores ativos e dispara coleta dos que já passaram
+    do intervalo configurado (campo intervalo_coleta_minutos no admin).
+    Chamada pelo Celery Beat a cada 30 minutos.
     """
+    from django.utils import timezone as tz
+
     credenciais = CredencialProvedor.objects.filter(ativo=True)
     total = 0
+    agora = tz.now()
+
     for cred in credenciais:
+        intervalo_min = cred.intervalo_coleta_minutos or 30
+        ultima = (
+            LogColeta.objects
+            .filter(credencial=cred)
+            .values_list('iniciado_em', flat=True)
+            .first()
+        )
+        if ultima is not None:
+            segundos_desde_ultima = (agora - ultima).total_seconds()
+            if segundos_desde_ultima < (intervalo_min * 60):
+                continue
+
         coletar_dados_provedor.delay(str(cred.id))
         total += 1
-    logger.info('Coleta iniciada para %d provedor(es)', total)
+
+    if total:
+        logger.info('Coleta iniciada para %d provedor(es)', total)
     return total
 
 
