@@ -49,7 +49,7 @@ function montarUrlProvedor(provedor: string, idUsina: string): string | null {
     case 'solis':
       return `https://www.soliscloud.com/#/station/stationdetail?id=${idUsina}`
     case 'hoymiles':
-      return `https://global.hoymiles.com/platform/solar/${idUsina}/overview`
+      return `https://global.hoymiles.com/website/plant/detail/${idUsina}`
     case 'fusionsolar':
       return `https://intl.fusionsolar.huawei.com/#/energy/list/station/${idUsina}`
     default:
