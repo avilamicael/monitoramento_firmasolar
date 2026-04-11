@@ -139,7 +139,9 @@ def coletar_dados_provedor(self, credencial_id: str):
             except Exception as exc:
                 logger.warning('%s: erro ao buscar alertas: %s', credencial.provedor, exc)
 
-        # 4. Persistir tudo em transação atômica
+        # 4. Persistir tudo em transação atômica + análise de alertas internos
+        from alertas.analise import analisar_usina
+
         ingestao = ServicoIngestao(credencial)
         usinas_por_id_provedor = {}
         total_inversores = 0
@@ -147,13 +149,22 @@ def coletar_dados_provedor(self, credencial_id: str):
         with transaction.atomic():
             for dados_usina in dados_usinas:
                 usina = ingestao.upsert_usina(dados_usina)
-                ingestao.criar_snapshot_usina(usina, dados_usina)
+                snapshot_usina = ingestao.criar_snapshot_usina(usina, dados_usina)
                 usinas_por_id_provedor[dados_usina.id_usina_provedor] = usina
 
+                inversores_snapshots = []
                 for dados_inv in inversores_por_usina.get(dados_usina.id_usina_provedor, []):
                     inversor = ingestao.upsert_inversor(usina, dados_inv)
-                    ingestao.criar_snapshot_inversor(inversor, dados_inv)
+                    snap_inv = ingestao.criar_snapshot_inversor(inversor, dados_inv)
+                    inversores_snapshots.append((inversor, snap_inv))
                     total_inversores += 1
+
+                # Análise de alertas internos (após snapshot salvo)
+                try:
+                    analisar_usina(usina, snapshot_usina, inversores_snapshots)
+                except Exception as exc:
+                    logger.warning('%s: erro na análise interna de %s: %s',
+                                   credencial.provedor, usina.nome, exc)
 
             ingestao.sincronizar_alertas(dados_alertas, usinas_por_id_provedor)
 

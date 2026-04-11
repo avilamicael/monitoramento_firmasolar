@@ -144,10 +144,13 @@ class RegraSupressao(models.Model):
 
 class Alerta(models.Model):
     """
-    Representa uma ocorrência de alarme em uma usina, reportada pelo provedor.
+    Representa uma ocorrência de alarme em uma usina.
+
+    Origem 'provedor': alerta retornado diretamente pela API do provedor (texto original).
+    Origem 'interno': alerta gerado pela análise dos dados coletados (diagnóstico do sistema).
 
     Ciclo de vida:
-        ativo → em_atendimento (equipe assume) → resolvido (problema desapareceu)
+        ativo → resolvido (problema desapareceu ou foi resolvido manualmente)
 
     Se um alerta resolvido reaparecer no próximo ciclo de coleta, ele é reaberto (volta para 'ativo').
     Se um alerta subir de nível, uma notificação de escalonamento é disparada.
@@ -159,9 +162,23 @@ class Alerta(models.Model):
         ('critico',    'Crítico'),
     ]
     ESTADO_CHOICES = [
-        ('ativo',          'Ativo'),
-        ('em_atendimento', 'Em atendimento'),
-        ('resolvido',      'Resolvido'),
+        ('ativo',     'Ativo'),
+        ('resolvido', 'Resolvido'),
+    ]
+    ORIGEM_CHOICES = [
+        ('provedor', 'Provedor'),
+        ('interno',  'Interno'),
+    ]
+    CATEGORIA_CHOICES = [
+        ('tensao_zero',         'Tensão zero — usina desligada'),
+        ('sobretensao',         'Sobretensão — tensão AC ≥ 240V'),
+        ('corrente_baixa',      'Corrente baixa prolongada — possível problema'),
+        ('sem_geracao_diurna',  'Sem geração em horário comercial (8h-18h)'),
+        ('sem_comunicacao',     'Sem comunicação — possível falha de Wi-Fi'),
+        ('geracao_abaixo',      'Geração abaixo do previsto'),
+        ('geracao_acima',       'Geração acima do previsto'),
+        ('temperatura_alta',    'Temperatura elevada do inversor'),
+        ('outro',               'Outro'),
     ]
 
     # Ordem para detectar escalonamento (maior índice = maior severidade)
@@ -181,7 +198,23 @@ class Alerta(models.Model):
         related_name='alertas',
         verbose_name='Tipo de alarme (catálogo)',
     )
+    origem = models.CharField(
+        max_length=10,
+        choices=ORIGEM_CHOICES,
+        default='provedor',
+        db_index=True,
+        verbose_name='Origem do alerta',
+    )
+    categoria = models.CharField(
+        max_length=30,
+        choices=CATEGORIA_CHOICES,
+        blank=True,
+        db_index=True,
+        verbose_name='Categoria (alertas internos)',
+        help_text='Preenchido automaticamente para alertas internos.',
+    )
     # ID da ocorrência no provedor — usado para deduplicação (ex: "2032_SN12345")
+    # Para alertas internos: chave composta (ex: "interno_tensao_zero_SN12345")
     id_alerta_provedor = models.CharField(max_length=200, blank=True)
     equipamento_sn = models.CharField(max_length=100, blank=True, verbose_name='Serial do equipamento')
     mensagem = models.TextField(verbose_name='Descrição do problema')
@@ -209,15 +242,18 @@ class Alerta(models.Model):
             models.Index(fields=['estado', '-inicio']),
             models.Index(fields=['nivel', 'estado']),
             models.Index(fields=['usina', 'estado']),
+            models.Index(fields=['origem', 'estado']),
+            models.Index(fields=['categoria', 'estado']),
         ]
 
     def __str__(self):
-        return f'[{self.nivel}] {self.mensagem[:60]} — {self.usina.nome}'
+        prefixo = '[INTERNO]' if self.origem == 'interno' else '[PROVEDOR]'
+        return f'{prefixo} [{self.nivel}] {self.mensagem[:60]} — {self.usina.nome}'
 
     @property
     def esta_aberto(self) -> bool:
         """True se o alerta ainda não foi resolvido."""
-        return self.estado in ('ativo', 'em_atendimento')
+        return self.estado == 'ativo'
 
     def nivel_escalou_para(self, novo_nivel: str) -> bool:
         """Retorna True se novo_nivel representa escalonamento em relação ao nível atual."""

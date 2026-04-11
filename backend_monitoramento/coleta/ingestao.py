@@ -138,7 +138,7 @@ class ServicoIngestao:
         - Novos alertas → cria + agenda notificação assíncrona (após commit)
         - Alertas existentes → detecta escalonamento; atualiza nível/sugestão
         - Alertas que sumiram do provedor → marca como 'resolvido'
-        - Alertas 'em_atendimento' não têm o estado sobrescrito automaticamente
+        - Apenas alertas de origem 'provedor' são gerenciados aqui
 
         Args:
             alertas: lista de alertas retornados pelo provedor neste ciclo
@@ -224,7 +224,7 @@ class ServicoIngestao:
                     ja_aberto = Alerta.objects.filter(
                         usina=usina,
                         id_alerta_provedor=dados.id_alerta_provedor,
-                        estado__in=('ativo', 'em_atendimento'),
+                        estado='ativo',
                     ).exists()
                     if not ja_aberto and e_desligamento_gradual(usina):
                         logger.debug(
@@ -275,15 +275,14 @@ class ServicoIngestao:
                 if alerta.estado == 'resolvido':
                     campos_update['estado'] = 'ativo'
                     campos_update['fim'] = None
-                # Não sobrescreve 'em_atendimento' — equipe está ciente
-
                 Alerta.objects.filter(pk=alerta.pk).update(**campos_update)
 
-        # Resolver alertas que sumiram do provedor neste ciclo
+        # Resolver alertas do provedor que sumiram neste ciclo (não afeta alertas internos)
         ids_usinas = [u.id for u in usinas_por_id_provedor.values()]
         resolvidos = Alerta.objects.filter(
             usina__in=ids_usinas,
             estado='ativo',
+            origem='provedor',
         ).exclude(
             id_alerta_provedor__in=ids_ativos_provedor,
         )
