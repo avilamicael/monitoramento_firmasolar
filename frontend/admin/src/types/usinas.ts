@@ -14,11 +14,28 @@ export interface UsinaResumo {
   atualizado_em: string
 }
 
+export interface SnapshotInversorResumo {
+  coletado_em: string
+  estado: string
+  pac_kw: number
+  energia_hoje_kwh: number
+  energia_total_kwh: number
+  tensao_ac_v: number | null
+  corrente_ac_a: number | null
+  tensao_dc_v: number | null
+  corrente_dc_a: number | null
+  frequencia_hz: number | null
+  temperatura_c: number | null
+  strings_mppt: Record<string, unknown>
+  soc_bateria: number | null
+}
+
 export interface InversorResumo {
   id: string
   numero_serie: string
   modelo: string
   id_inversor_provedor: string
+  ultimo_snapshot: SnapshotInversorResumo | null
 }
 
 export interface SnapshotUsina {
@@ -43,6 +60,10 @@ export interface UsinaDetalhe {
   ativo: boolean
   fuso_horario: string
   endereco: string
+  cidade: string
+  telefone: string
+  latitude: number | null
+  longitude: number | null
   status_garantia: StatusGarantia
   ultimo_snapshot: SnapshotUsina | null
   inversores: InversorResumo[]

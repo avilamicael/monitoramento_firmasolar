@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from usinas.models import Usina, SnapshotUsina, Inversor, GarantiaUsina
+from usinas.models import Usina, SnapshotUsina, SnapshotInversor, Inversor, GarantiaUsina
 
 
 class SnapshotUsinaSerializer(serializers.ModelSerializer):
@@ -15,12 +15,29 @@ class SnapshotUsinaSerializer(serializers.ModelSerializer):
         # payload_bruto EXCLUIDO — dados brutos do provedor, potencialmente sensiveis (T-2-03)
 
 
+class SnapshotInversorResumoSerializer(serializers.ModelSerializer):
+    """Snapshot do inversor resumido para uso dentro do detalhe de usina."""
+
+    class Meta:
+        model = SnapshotInversor
+        fields = [
+            'coletado_em', 'estado',
+            'pac_kw', 'energia_hoje_kwh', 'energia_total_kwh',
+            'tensao_ac_v', 'corrente_ac_a',
+            'tensao_dc_v', 'corrente_dc_a',
+            'frequencia_hz', 'temperatura_c',
+            'strings_mppt', 'soc_bateria',
+        ]
+
+
 class InversorResumoSerializer(serializers.ModelSerializer):
-    """Inversor resumido para uso dentro do detalhe de usina."""
+    """Inversor com dados elétricos do último snapshot para detalhe de usina."""
+
+    ultimo_snapshot = SnapshotInversorResumoSerializer(read_only=True)
 
     class Meta:
         model = Inversor
-        fields = ['id', 'numero_serie', 'modelo', 'id_inversor_provedor']
+        fields = ['id', 'numero_serie', 'modelo', 'id_inversor_provedor', 'ultimo_snapshot']
 
 
 class UsinaListSerializer(serializers.ModelSerializer):

@@ -80,6 +80,8 @@ export function UsinasPage() {
             <SelectItem value="solis">Solis</SelectItem>
             <SelectItem value="hoymiles">Hoymiles</SelectItem>
             <SelectItem value="fusionsolar">FusionSolar</SelectItem>
+            <SelectItem value="auxsol">AuxSol</SelectItem>
+            <SelectItem value="solarman">Solarman</SelectItem>
           </SelectContent>
         </Select>
 

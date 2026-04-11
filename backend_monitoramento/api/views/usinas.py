@@ -39,7 +39,7 @@ class UsinaViewSet(viewsets.ModelViewSet):
         return (
             Usina.objects
             .select_related('ultimo_snapshot', 'garantia')
-            .prefetch_related('inversores')
+            .prefetch_related('inversores', 'inversores__ultimo_snapshot')
             .order_by('nome')
         )
 

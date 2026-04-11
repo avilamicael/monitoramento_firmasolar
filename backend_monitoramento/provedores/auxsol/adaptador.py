@@ -13,7 +13,8 @@ from .consultas import listar_usinas, listar_inversores, buscar_inversor_realtim
 logger = logging.getLogger(__name__)
 
 # Mapeamento de status AuxSol → status interno
-_STATUS_MAP = {'01': 'normal', '02': 'aviso', '03': 'offline'}
+# 01=normal (gerando), 02=standby (noite/sem sol), 03=falha
+_STATUS_MAP = {'01': 'normal', '02': 'offline', '03': 'offline'}
 
 # Mapeamento de nivel de alarme AuxSol → nivel interno
 _NIVEL_ALERTA_MAP = {'01': 'critico', '02': 'importante', '03': 'aviso', '04': 'info'}

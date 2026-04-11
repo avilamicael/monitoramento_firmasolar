@@ -154,27 +154,32 @@ class GeracaoDiariaView(APIView):
         dias = min(int(request.query_params.get('dias', 30)), 90)
         data_inicio = timezone.now() - datetime.timedelta(days=dias)
 
-        por_dia = list(
-            SnapshotUsina.objects
-            .filter(coletado_em__gte=data_inicio)
-            .annotate(dia=TruncDate('coletado_em'))
-            .values('dia')
-            .annotate(
-                energia_kwh=Sum('energia_hoje_kwh'),
-                usinas_coletadas=Count('usina', distinct=True),
-            )
-            .order_by('dia')
-        )
-
-        # Converter date para string ISO
-        resultado = [
-            {
-                'dia': item['dia'].isoformat(),
-                'energia_kwh': round(item['energia_kwh'] or 0, 2),
-                'usinas_coletadas': item['usinas_coletadas'],
-            }
-            for item in por_dia
-        ]
+        # Pega o último snapshot de cada usina por dia (DISTINCT ON do PostgreSQL)
+        # para evitar somar energia_hoje_kwh multiplicada por número de coletas/dia.
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute('''
+                SELECT dia, SUM(energia_hoje_kwh), COUNT(DISTINCT usina_id)
+                FROM (
+                    SELECT DISTINCT ON (usina_id, DATE(coletado_em))
+                        usina_id,
+                        DATE(coletado_em) AS dia,
+                        energia_hoje_kwh
+                    FROM usinas_snapshotusina
+                    WHERE coletado_em >= %s
+                    ORDER BY usina_id, DATE(coletado_em), coletado_em DESC
+                ) ultimos
+                GROUP BY dia
+                ORDER BY dia
+            ''', [data_inicio])
+            resultado = [
+                {
+                    'dia': row[0].isoformat(),
+                    'energia_kwh': round(row[1] or 0, 2),
+                    'usinas_coletadas': row[2],
+                }
+                for row in cursor.fetchall()
+            ]
 
         return Response({
             'dias': dias,
