@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router'
-import { ArrowLeftIcon } from 'lucide-react'
+import { ArrowLeftIcon, ExternalLinkIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,6 +30,31 @@ const CATEGORIA_LABELS: Record<string, string> = {
   geracao_acima: 'Geracao acima do previsto',
   temperatura_alta: 'Temperatura elevada do inversor',
   outro: 'Outro',
+}
+
+const PROVEDOR_LABELS: Record<string, string> = {
+  solis: 'Solis Cloud',
+  hoymiles: 'Hoymiles',
+  fusionsolar: 'FusionSolar',
+  auxsol: 'AuxSol Cloud',
+  solarman: 'Solarman',
+}
+
+function montarUrlProvedor(provedor: string, idUsina: string): string | null {
+  switch (provedor) {
+    case 'auxsol':
+      return `https://eu.auxsolcloud.com/#/analysis/plant-view?plantId=${idUsina}`
+    case 'solarman':
+      return `https://globalpro.solarmanpv.com/station/main?id=${idUsina}`
+    case 'solis':
+      return `https://www.soliscloud.com/#/station/stationdetail?id=${idUsina}`
+    case 'hoymiles':
+      return `https://global.hoymiles.com/platform/solar/${idUsina}/overview`
+    case 'fusionsolar':
+      return `https://intl.fusionsolar.huawei.com/#/energy/list/station/${idUsina}`
+    default:
+      return null
+  }
 }
 
 function NivelBadge({ nivel }: { nivel: NivelAlerta }) {
@@ -140,14 +165,25 @@ export function AlertaDetalhePage() {
                 <dd className="mt-1 font-mono text-xs">{data.equipamento_sn}</dd>
               </div>
             )}
-            {data.id_alerta_provedor && data.origem === 'provedor' && (
-              <div>
-                <dt className="text-muted-foreground font-medium">ID Provedor</dt>
-                <dd className="mt-1 font-mono text-xs">{data.id_alerta_provedor}</dd>
-              </div>
-            )}
-          </dl>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm mt-4">
+            <div>
+              <dt className="text-muted-foreground font-medium">Provedor</dt>
+              <dd className="mt-1">
+                {PROVEDOR_LABELS[data.usina_provedor] || data.usina_provedor}
+                {(() => {
+                  const url = montarUrlProvedor(data.usina_provedor, data.usina_id_provedor)
+                  return url ? (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-2 text-primary hover:underline inline-flex items-center gap-1 text-xs"
+                    >
+                      Ver no provedor <ExternalLinkIcon className="size-3" />
+                    </a>
+                  ) : null
+                })()}
+              </dd>
+            </div>
             <div>
               <dt className="text-muted-foreground font-medium">Inicio</dt>
               <dd className="mt-1">{new Date(data.inicio).toLocaleString('pt-BR')}</dd>
@@ -156,13 +192,19 @@ export function AlertaDetalhePage() {
               <dt className="text-muted-foreground font-medium">Fim</dt>
               <dd className="mt-1">{data.fim ? new Date(data.fim).toLocaleString('pt-BR') : 'Em andamento'}</dd>
             </div>
-          </dl>
-          {data.sugestao && (
-            <div className="mt-4 text-sm">
-              <dt className="text-muted-foreground font-medium">Sugestao / Diagnostico</dt>
-              <dd className="mt-1">{data.sugestao}</dd>
+            {data.categoria && (
+              <div className="sm:col-span-2">
+                <dt className="text-muted-foreground font-medium">Categoria</dt>
+                <dd className="mt-1">{CATEGORIA_LABELS[data.categoria] || data.categoria}</dd>
+              </div>
+            )}
+            <div className="sm:col-span-2">
+              <dt className="text-muted-foreground font-medium">Diagnostico</dt>
+              <dd className="mt-1">
+                {data.sugestao || 'Aguardando analise automatica — o sistema ira diagnosticar na proxima coleta em horario comercial.'}
+              </dd>
             </div>
-          )}
+          </dl>
         </CardContent>
       </Card>
 

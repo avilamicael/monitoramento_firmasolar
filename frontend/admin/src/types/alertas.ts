@@ -34,6 +34,8 @@ export interface AlertaDetalhe extends AlertaResumo {
   equipamento_sn: string
   sugestao: string
   anotacoes: string
+  usina_provedor: string
+  usina_id_provedor: string
 }
 
 export interface AlertaPatch {

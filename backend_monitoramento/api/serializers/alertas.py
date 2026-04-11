@@ -36,11 +36,14 @@ class AlertaDetalheSerializer(serializers.ModelSerializer):
 
     com_garantia = serializers.SerializerMethodField()
     usina_nome = serializers.CharField(source='usina.nome', read_only=True)
+    usina_provedor = serializers.CharField(source='usina.provedor', read_only=True)
+    usina_id_provedor = serializers.CharField(source='usina.id_usina_provedor', read_only=True)
 
     class Meta:
         model = Alerta
         fields = [
-            'id', 'usina', 'usina_nome', 'origem', 'categoria',
+            'id', 'usina', 'usina_nome', 'usina_provedor', 'usina_id_provedor',
+            'origem', 'categoria',
             'catalogo_alarme', 'id_alerta_provedor', 'equipamento_sn',
             'mensagem', 'nivel', 'estado', 'inicio', 'fim',
             'sugestao', 'anotacoes', 'com_garantia',
