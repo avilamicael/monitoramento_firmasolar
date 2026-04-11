@@ -47,7 +47,7 @@ function montarUrlProvedor(provedor: string, idUsina: string): string | null {
     case 'solarman':
       return `https://globalpro.solarmanpv.com/station/main?id=${idUsina}`
     case 'solis':
-      return `https://www.soliscloud.com/#/station/stationdetail?id=${idUsina}`
+      return `https://www.soliscloud.com/station/stationDetails/generalSituation/${idUsina}`
     case 'hoymiles':
       return `https://global.hoymiles.com/website/plant/detail/${idUsina}`
     case 'fusionsolar':
