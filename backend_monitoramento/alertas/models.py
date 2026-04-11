@@ -142,6 +142,34 @@ class RegraSupressao(models.Model):
         return timezone.now() < self.ativo_ate
 
 
+class SupressaoInterna(models.Model):
+    """
+    Suprime um tipo de alerta interno para uma usina específica.
+    Usado quando o cliente não quer resolver o problema (ex: Wi-Fi) e o operador
+    não quer que o alerta continue aparecendo.
+
+    Para reativar, basta deletar o registro.
+    """
+    usina = models.ForeignKey(
+        'usinas.Usina',
+        on_delete=models.CASCADE,
+        related_name='supressoes_internas',
+    )
+    categoria = models.CharField(max_length=30, verbose_name='Categoria suprimida')
+    motivo = models.TextField(blank=True, verbose_name='Motivo da supressão')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    objects = models.Manager()
+
+    class Meta:
+        verbose_name = 'Supressão de Alerta Interno'
+        verbose_name_plural = 'Supressões de Alertas Internos'
+        unique_together = [('usina', 'categoria')]
+
+    def __str__(self):
+        return f'{self.categoria} suprimido em {self.usina.nome}'
+
+
 class Alerta(models.Model):
     """
     Representa uma ocorrência de alarme em uma usina.

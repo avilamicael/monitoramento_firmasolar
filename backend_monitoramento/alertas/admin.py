@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 
-from .models import Alerta, CatalogoAlarme, RegraSupressao
+from .models import Alerta, CatalogoAlarme, RegraSupressao, SupressaoInterna
 
 
 @admin.register(CatalogoAlarme)
@@ -91,3 +91,17 @@ class AlertaAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('usina', 'catalogo_alarme')
+
+
+@admin.register(SupressaoInterna)
+class SupressaoInternaAdmin(admin.ModelAdmin):
+    list_display = ['usina', 'categoria', 'motivo_resumido', 'criado_em']
+    list_filter = ['categoria']
+    search_fields = ['usina__nome', 'motivo']
+    raw_id_fields = ['usina']
+    fields = ['usina', 'categoria', 'motivo', 'criado_em']
+    readonly_fields = ['criado_em']
+
+    def motivo_resumido(self, obj):
+        return obj.motivo[:60] if obj.motivo else '—'
+    motivo_resumido.short_description = 'Motivo'

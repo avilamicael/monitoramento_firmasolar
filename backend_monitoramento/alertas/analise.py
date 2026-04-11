@@ -26,7 +26,7 @@ from datetime import timedelta
 from django.utils import timezone as dj_timezone
 
 from usinas.models import Usina, SnapshotUsina, Inversor, SnapshotInversor
-from alertas.models import Alerta
+from alertas.models import Alerta, SupressaoInterna
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +109,13 @@ def _enriquecer_ou_criar(
     """
     Logica principal: primeiro tenta enriquecer um alerta do provedor existente.
     Se nao encontrar, cria um alerta interno novo.
+    Respeita supressoes: se a categoria esta suprimida para esta usina, nao cria.
     """
     agora = dj_timezone.now()
+
+    # 0. Verificar supressao
+    if SupressaoInterna.objects.filter(usina=usina, categoria=categoria).exists():
+        return
 
     # 1. Tentar enriquecer alerta do provedor
     alerta_provedor = _buscar_alerta_provedor_relacionado(usina, categoria, equipamento_sn)
@@ -187,38 +192,31 @@ def _verificar_sem_comunicacao(usina: Usina, snapshot: SnapshotUsina, agora) -> 
     """
     Verifica se o inversor parou de comunicar com a nuvem.
     Usa data_medicao (timestamp do provedor) ao inves de coletado_em (nosso sistema).
-    Diferenca importante: nosso sistema pode coletar da API normalmente,
-    mas o inversor pode ter parado de enviar dados ha meses (ex: Wi-Fi caiu).
+    A partir de 24h sem comunicar, gera alerta.
+    A partir de 7 dias, escala para importante (possivel falha de Wi-Fi).
     """
     chave = str(usina.id_usina_provedor)
 
-    # Usar data_medicao (quando o inversor realmente comunicou)
-    # Fallback para coletado_em se data_medicao nao disponivel
     ultima_comunicacao = snapshot.data_medicao or snapshot.coletado_em
     diff = agora - ultima_comunicacao
+    horas = diff.total_seconds() / 3600
+    dias = diff.days
 
-    if diff > timedelta(days=1):
-        dias = diff.days
-        if dias > 30:
-            nivel = 'critico'
-            mensagem = f'Inversor sem comunicar ha {dias} dias — ultima comunicacao: {ultima_comunicacao.strftime("%d/%m/%Y")}'
-            sugestao = 'Inversor sem comunicacao ha muito tempo. Provavel problema de Wi-Fi ou datalogger desconectado. Necessario visita tecnica.'
-        elif dias > 7:
+    if horas >= 24:
+        if dias >= 7:
             nivel = 'importante'
-            mensagem = f'Inversor sem comunicar ha {dias} dias — ultima comunicacao: {ultima_comunicacao.strftime("%d/%m/%Y %H:%M")}'
-            sugestao = 'Possivel falha de Wi-Fi ou problema no datalogger. Verificar conexao de internet do local.'
+            tempo = f'{dias} dias'
         else:
             nivel = 'aviso'
-            mensagem = f'Inversor sem comunicar ha {dias} dia(s) — ultima comunicacao: {ultima_comunicacao.strftime("%d/%m/%Y %H:%M")}'
-            sugestao = 'Verificar se houve queda de internet ou reinicio do roteador no local.'
+            tempo = f'{dias} dia(s)' if dias >= 1 else f'{int(horas)} horas'
 
         _enriquecer_ou_criar(
             usina=usina,
             categoria='sem_comunicacao',
             chave=chave,
             nivel=nivel,
-            mensagem=mensagem,
-            sugestao=sugestao,
+            mensagem=f'Inversor sem comunicacao ha {tempo} — ultima comunicacao: {ultima_comunicacao.strftime("%d/%m/%Y %H:%M")}',
+            sugestao='Possivel falha de Wi-Fi ou datalogger desconectado. Verificar conexao de internet do local.',
         )
     else:
         _resolver_alerta_interno(usina, 'sem_comunicacao', chave)
