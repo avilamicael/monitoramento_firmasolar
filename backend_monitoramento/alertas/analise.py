@@ -268,9 +268,19 @@ def _enriquecer_ou_criar(usina, categoria, chave, nivel, mensagem, sugestao='', 
 
 
 def _resolver_alerta_interno(usina, categoria, chave):
+    """Resolve alertas internos E alertas do provedor enriquecidos com esta categoria."""
+    agora = dj_timezone.now()
+    # Resolver alerta interno pelo ID
     id_alerta = f'interno_{categoria}_{chave}'
     Alerta.objects.filter(
         usina=usina,
         id_alerta_provedor=id_alerta,
         estado='ativo',
-    ).update(estado='resolvido', fim=dj_timezone.now())
+    ).update(estado='resolvido', fim=agora)
+
+    # Resolver alertas do provedor que foram enriquecidos com esta categoria
+    Alerta.objects.filter(
+        usina=usina,
+        categoria=categoria,
+        estado='ativo',
+    ).update(estado='resolvido', fim=agora)
