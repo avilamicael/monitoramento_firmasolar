@@ -54,7 +54,7 @@ def _get(path: str, sessao: requests.Session, token: str, params: dict | None = 
     code = dados.get('code', '')
     if code != 'AWX-0000':
         msg = dados.get('msg') or str(dados)
-        if 'auth' in msg.lower() or 'token' in msg.lower() or '401' in str(code):
+        if 'auth' in msg.lower() or 'token' in msg.lower() or '401' in str(code) or '登录' in msg or '过期' in msg or 'login' in msg.lower() or 'expir' in msg.lower():
             raise ProvedorErroAuth(f'AuxSol: erro de autenticacao — {msg}')
         raise ProvedorErro(f'AuxSol: erro da API em {path} — {msg}')
 

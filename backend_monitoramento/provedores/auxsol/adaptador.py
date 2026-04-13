@@ -78,9 +78,22 @@ class AuxsolAdaptador(AdaptadorProvedor):
 
     def _garantir_autenticado(self):
         if not self._token or token_expirado({'obtido_em': self._token_obtido_em}):
-            dados = fazer_login(self._account, self._password, self._sessao)
-            self._token = dados['token']
-            self._token_obtido_em = dados['obtido_em']
+            self._fazer_login()
+
+    def _fazer_login(self):
+        dados = fazer_login(self._account, self._password, self._sessao)
+        self._token = dados['token']
+        self._token_obtido_em = dados['obtido_em']
+
+    def _executar_com_relogin(self, fn):
+        """Executa fn e tenta re-login se receber erro de autenticacao."""
+        from provedores.excecoes import ProvedorErroAuth
+        try:
+            return fn()
+        except ProvedorErroAuth:
+            logger.info('AuxSol: token rejeitado pelo servidor, fazendo re-login...')
+            self._fazer_login()
+            return fn()
 
     def precisa_renovar_token(self) -> bool:
         return not self._token or token_expirado({'obtido_em': self._token_obtido_em})
@@ -99,12 +112,16 @@ class AuxsolAdaptador(AdaptadorProvedor):
 
     def buscar_usinas(self) -> list[DadosUsina]:
         self._garantir_autenticado()
-        registros = listar_usinas(self._sessao, self._token)
+        registros = self._executar_com_relogin(
+            lambda: listar_usinas(self._sessao, self._token)
+        )
         return [self._normalizar_usina(r) for r in registros]
 
     def buscar_inversores(self, id_usina_provedor: str) -> list[DadosInversor]:
         self._garantir_autenticado()
-        registros = listar_inversores(id_usina_provedor, self._sessao, self._token)
+        registros = self._executar_com_relogin(
+            lambda: listar_inversores(id_usina_provedor, self._sessao, self._token)
+        )
         resultado = []
         for inv in registros:
             sn = inv.get('sn') or ''
