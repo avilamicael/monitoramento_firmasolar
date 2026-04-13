@@ -241,30 +241,14 @@ def _verificar_sem_comunicacao(usina, snapshot, agora):
 
 # === Funcoes auxiliares ===
 
-def _buscar_alerta_provedor_relacionado(usina, categoria, equipamento_sn=''):
-    filtro = {'usina': usina, 'origem': 'provedor', 'estado': 'ativo'}
-    if equipamento_sn:
-        filtro['equipamento_sn'] = equipamento_sn
-    return Alerta.objects.filter(**filtro).order_by('-inicio').first()
-
-
 def _enriquecer_ou_criar(usina, categoria, chave, nivel, mensagem, sugestao='', equipamento_sn=''):
+    """
+    Cria ou atualiza um alerta interno. Nao enriquece alertas do provedor
+    para evitar categorias erradas (ex: L3 warning categorizado como sem_geracao).
+    """
     agora = dj_timezone.now()
 
     if SupressaoInterna.objects.filter(usina=usina, categoria=categoria).exists():
-        return
-
-    alerta_provedor = _buscar_alerta_provedor_relacionado(usina, categoria, equipamento_sn)
-    if alerta_provedor:
-        campos = {}
-        if not alerta_provedor.categoria:
-            campos['categoria'] = categoria
-        if not alerta_provedor.sugestao and sugestao:
-            campos['sugestao'] = sugestao
-        if alerta_provedor.nivel_escalou_para(nivel):
-            campos['nivel'] = nivel
-        if campos:
-            Alerta.objects.filter(pk=alerta_provedor.pk).update(**campos)
         return
 
     id_alerta = f'interno_{categoria}_{chave}'
@@ -294,19 +278,10 @@ def _enriquecer_ou_criar(usina, categoria, chave, nivel, mensagem, sugestao='', 
 
 
 def _resolver_alerta_interno(usina, categoria, chave):
-    """Resolve alertas internos E alertas do provedor enriquecidos com esta categoria."""
-    agora = dj_timezone.now()
-    # Resolver alerta interno pelo ID
+    """Resolve alerta interno pelo ID."""
     id_alerta = f'interno_{categoria}_{chave}'
     Alerta.objects.filter(
         usina=usina,
         id_alerta_provedor=id_alerta,
         estado='ativo',
-    ).update(estado='resolvido', fim=agora)
-
-    # Resolver alertas do provedor que foram enriquecidos com esta categoria
-    Alerta.objects.filter(
-        usina=usina,
-        categoria=categoria,
-        estado='ativo',
-    ).update(estado='resolvido', fim=agora)
+    ).update(estado='resolvido', fim=dj_timezone.now())
