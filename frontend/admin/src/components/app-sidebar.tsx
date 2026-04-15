@@ -34,6 +34,7 @@ const navGroups: NavGroup[] = [
     icon: SettingsIcon,
     items: [
       { title: 'Garantias', url: '/garantias' },
+      { title: 'Configurações', url: '/configuracoes' },
     ],
   },
 ]
