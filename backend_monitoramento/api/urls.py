@@ -8,6 +8,7 @@ from .views.garantias import GarantiaListView
 from .views.inversores import InversorViewSet
 from .views.alertas import AlertaViewSet
 from .views.configuracoes import ConfiguracaoSistemaView
+from .views.provedores import CredencialProvedorViewSet, ProvedoresMetaView
 from .views.analytics import (
     PotenciaMediaView, RankingFabricantesView, MapaUsinasView,
     AlertasResumoView, GeracaoDiariaView, EnergiaResumoView,
@@ -17,6 +18,7 @@ router = DefaultRouter()
 router.register('usinas', UsinaViewSet, basename='usina')
 router.register('inversores', InversorViewSet, basename='inversor')
 router.register('alertas', AlertaViewSet, basename='alerta')
+router.register('provedores', CredencialProvedorViewSet, basename='provedor')
 
 urlpatterns = [
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -25,6 +27,7 @@ urlpatterns = [
     path('garantias/', GarantiaListView.as_view(), name='garantia-list'),
     path('coleta/logs/', LogColetaListView.as_view(), name='log-coleta-list'),
     path('configuracoes/', ConfiguracaoSistemaView.as_view(), name='configuracoes-detail'),
+    path('provedores/meta/', ProvedoresMetaView.as_view(), name='provedores-meta'),
     path('analytics/potencia/', PotenciaMediaView.as_view(), name='analytics-potencia'),
     path('analytics/ranking-fabricantes/', RankingFabricantesView.as_view(), name='analytics-ranking'),
     path('analytics/mapa/', MapaUsinasView.as_view(), name='analytics-mapa'),

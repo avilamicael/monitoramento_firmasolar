@@ -8,6 +8,7 @@ import { GarantiasPage } from '@/pages/GarantiasPage'
 import { AlertasPage } from '@/pages/AlertasPage'
 import { AlertaDetalhePage } from '@/pages/AlertaDetalhePage'
 import { ConfiguracoesPage } from '@/pages/ConfiguracoesPage'
+import { ProvedoresPage } from '@/pages/ProvedoresPage'
 import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/app-sidebar'
 import {
@@ -31,6 +32,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/garantias': 'Garantias',
   '/alertas': 'Alertas',
   '/configuracoes': 'Configurações',
+  '/provedores': 'Provedores',
 }
 
 function ProtectedLayout() {
@@ -86,6 +88,7 @@ const router = createBrowserRouter([
       { path: 'alertas/:id', element: <AlertaDetalhePage /> },
       { path: 'alertas', element: <AlertasPage /> },
       { path: 'configuracoes', element: <ConfiguracoesPage /> },
+      { path: 'provedores', element: <ProvedoresPage /> },
     ],
   },
 ])

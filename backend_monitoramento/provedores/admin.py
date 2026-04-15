@@ -5,23 +5,19 @@ from django import forms
 from django.contrib import admin, messages
 from django.utils.html import format_html
 
+from .campos import (
+    CAMPOS_POR_PROVEDOR as _CAMPOS_RAW,
+    INTERVALO_MINIMO_MINUTOS as INTERVALO_MINIMO_GLOBAL,
+    PROVEDORES_TOKEN_MANUAL,
+)
 from .cripto import criptografar_credenciais, descriptografar_credenciais
 from .models import CacheTokenProvedor, CredencialProvedor
 
-# Mapeamento: provedor → campos necessários com labels amigáveis
+# Compatibilidade com código existente — admin ignora o 3º elemento (tipo de campo).
 CAMPOS_POR_PROVEDOR = {
-    'solis':       [('api_key', 'API Key'), ('app_secret', 'App Secret')],
-    'hoymiles':    [('username', 'Usuário / Email'), ('password', 'Senha')],
-    'fusionsolar': [('username', 'Usuário'), ('system_code', 'System Code')],
-    'solarman':    [('email', 'Email'), ('password', 'Senha')],
-    'auxsol':      [('account', 'Usuário / Email'), ('password', 'Senha')],
+    provedor: [(chave, label) for chave, label, _tipo in campos]
+    for provedor, campos in _CAMPOS_RAW.items()
 }
-
-# Provedores que usam token JWT manual (exibir campo extra + instruções)
-PROVEDORES_TOKEN_MANUAL = {'solarman'}
-
-# Intervalo mínimo global (em minutos)
-INTERVALO_MINIMO_GLOBAL = 30
 
 INSTRUCOES_TOKEN_SOLARMAN = (
     '<div style="background:#e8f4fd;border:1px solid #b3d8fd;border-radius:4px;'
