@@ -10,6 +10,7 @@ from .views.alertas import AlertaViewSet
 from .views.configuracoes import ConfiguracaoSistemaView
 from .views.provedores import CredencialProvedorViewSet, ProvedoresMetaView
 from .views.notificacoes import NotificacaoViewSet
+from .views.notificacoes_config import ConfiguracaoNotificacaoViewSet
 from .views.analytics import (
     PotenciaMediaView, RankingFabricantesView, MapaUsinasView,
     AlertasResumoView, GeracaoDiariaView, EnergiaResumoView,
@@ -21,6 +22,7 @@ router.register('inversores', InversorViewSet, basename='inversor')
 router.register('alertas', AlertaViewSet, basename='alerta')
 router.register('provedores', CredencialProvedorViewSet, basename='provedor')
 router.register('notificacoes', NotificacaoViewSet, basename='notificacao')
+router.register('notificacoes-config', ConfiguracaoNotificacaoViewSet, basename='notificacao-config')
 
 urlpatterns = [
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

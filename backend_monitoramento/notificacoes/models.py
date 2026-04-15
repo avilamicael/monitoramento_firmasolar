@@ -94,6 +94,7 @@ class ConfiguracaoNotificacao(models.Model):
     CANAL_CHOICES = [
         ('email',    'E-mail'),
         ('whatsapp', 'WhatsApp'),
+        ('webhook',  'Webhook'),
     ]
 
     canal = models.CharField(max_length=20, choices=CANAL_CHOICES, unique=True)

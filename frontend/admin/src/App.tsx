@@ -10,6 +10,7 @@ import { AlertaDetalhePage } from '@/pages/AlertaDetalhePage'
 import { ConfiguracoesPage } from '@/pages/ConfiguracoesPage'
 import { ProvedoresPage } from '@/pages/ProvedoresPage'
 import { NotificacoesPage } from '@/pages/NotificacoesPage'
+import { GestaoNotificacoesPage } from '@/pages/GestaoNotificacoesPage'
 import { NotificationBell } from '@/components/notificacoes/NotificationBell'
 import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/app-sidebar'
@@ -36,6 +37,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/configuracoes': 'Configurações',
   '/provedores': 'Provedores',
   '/notificacoes': 'Notificações',
+  '/gestao-notificacoes': 'Gestão de Notificações',
 }
 
 function ProtectedLayout() {
@@ -96,6 +98,7 @@ const router = createBrowserRouter([
       { path: 'configuracoes', element: <ConfiguracoesPage /> },
       { path: 'provedores', element: <ProvedoresPage /> },
       { path: 'notificacoes', element: <NotificacoesPage /> },
+      { path: 'gestao-notificacoes', element: <GestaoNotificacoesPage /> },
     ],
   },
 ])

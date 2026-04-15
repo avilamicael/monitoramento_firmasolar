@@ -35,6 +35,7 @@ const navGroups: NavGroup[] = [
     items: [
       { title: 'Garantias', url: '/garantias' },
       { title: 'Provedores', url: '/provedores' },
+      { title: 'Notificações', url: '/gestao-notificacoes' },
       { title: 'Configurações', url: '/configuracoes' },
     ],
   },

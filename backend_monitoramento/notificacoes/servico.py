@@ -21,8 +21,10 @@ def _carregar_backends():
     if not _BACKENDS_MAP:
         from .backends.email import EmailBackend
         from .backends.whatsapp import WhatsAppBackend
+        from .backends.webhook import WebhookBackend
         _BACKENDS_MAP['email'] = EmailBackend
         _BACKENDS_MAP['whatsapp'] = WhatsAppBackend
+        _BACKENDS_MAP['webhook'] = WebhookBackend
 
 
 class ServicoNotificacao:

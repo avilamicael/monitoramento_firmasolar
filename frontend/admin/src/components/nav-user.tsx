@@ -106,7 +106,7 @@ export function NavUser({
                   <BadgeCheckIcon />
                   Conta
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/notificacoes')}>
+                <DropdownMenuItem onClick={() => navigate('/gestao-notificacoes')}>
                   <BellIcon />
                   Notificações
                 </DropdownMenuItem>
