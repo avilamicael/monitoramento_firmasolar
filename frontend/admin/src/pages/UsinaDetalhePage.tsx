@@ -25,6 +25,7 @@ import type { InversorResumo } from '@/types/usinas'
 import { CATEGORIA_LABELS } from '@/types/alertas'
 import { Button } from '@/components/ui/button'
 import { ConfigAlertasDialog } from '@/components/usinas/ConfigAlertasDialog'
+import { AtivoToggleButton } from '@/components/usinas/AtivoToggleButton'
 import { useState } from 'react'
 import { PencilIcon } from 'lucide-react'
 
@@ -143,14 +144,17 @@ export function UsinaDetalhePage() {
       </Link>
 
       {/* Header com nome e status */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{data.nome}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {PROVEDOR_LABELS[data.provedor] || data.provedor} &middot; {data.capacidade_kwp} kWp
           </p>
         </div>
-        <StatusGarantiaBadge status={data.status_garantia} />
+        <div className="flex items-center gap-2">
+          <StatusGarantiaBadge status={data.status_garantia} />
+          <AtivoToggleButton usinaId={data.id} ativo={data.ativo} onChange={() => void refetch()} />
+        </div>
       </div>
 
       {/* Cards de resumo em tempo real */}

@@ -143,7 +143,7 @@ export function ConfiguracoesPage() {
             />
             <p className="text-xs text-muted-foreground">
               Usinas sem snapshot há mais deste número de dias são automaticamente desativadas.
-              Para retomar, reative manualmente no Django admin.
+              Para retomar, abra a página da usina e clique em "Reativar coleta".
             </p>
           </div>
 

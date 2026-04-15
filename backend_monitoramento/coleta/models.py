@@ -16,8 +16,8 @@ class ConfiguracaoSistema(models.Model):
         verbose_name='Dias sem comunicação até pausar coleta',
         help_text=(
             'Usinas sem snapshot há mais deste número de dias são automaticamente '
-            'desativadas (ativo=False) no início do próximo ciclo de coleta. '
-            'Para retomar, reative manualmente no admin.'
+            'desativadas no início do próximo ciclo de coleta. Para retomar, '
+            'acesse a página da usina e reative a coleta.'
         ),
     )
     meses_garantia_padrao = models.PositiveIntegerField(

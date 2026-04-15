@@ -88,11 +88,14 @@ class UsinaDetalheSerializer(serializers.ModelSerializer):
 
 
 class UsinaPatchSerializer(serializers.ModelSerializer):
-    """Serializer de escrita para PATCH /api/usinas/{id}/ — apenas campos editáveis pelo operador (USN-03, T-2-04)."""
+    """Serializer de escrita para PATCH /api/usinas/{id}/ — apenas campos editáveis pelo operador (USN-03, T-2-04).
+
+    Campo `ativo`: permite reativar usina pausada por inatividade sem precisar do Django admin.
+    """
 
     class Meta:
         model = Usina
-        fields = ['nome', 'capacidade_kwp', 'tensao_sobretensao_v']
+        fields = ['nome', 'capacidade_kwp', 'tensao_sobretensao_v', 'ativo']
 
     def validate_tensao_sobretensao_v(self, valor):
         if valor is None:
