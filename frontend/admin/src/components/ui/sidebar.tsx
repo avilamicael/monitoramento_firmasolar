@@ -27,7 +27,6 @@ const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
-const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
@@ -68,7 +67,15 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen)
+  // Lê o cookie no mount — mantém o estado do sidebar entre recargas.
+  const [_open, _setOpen] = React.useState<boolean>(() => {
+    if (typeof document === "undefined") return defaultOpen
+    const match = document.cookie.match(
+      new RegExp(`(?:^|;\\s*)${SIDEBAR_COOKIE_NAME}=([^;]+)`),
+    )
+    if (!match) return defaultOpen
+    return match[1] === "true"
+  })
   const open = openProp ?? _open
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
@@ -90,21 +97,8 @@ function SidebarProvider({
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
 
-  // Adds a keyboard shortcut to toggle the sidebar.
-  React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-        (event.metaKey || event.ctrlKey)
-      ) {
-        event.preventDefault()
-        toggleSidebar()
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [toggleSidebar])
+  // Atalho Ctrl+B/Cmd+B removido — colidia com bold em campos de texto e
+  // deslogava o sidebar acidentalmente. Toggle continua disponível via botão.
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
