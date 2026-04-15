@@ -9,6 +9,8 @@ import { AlertasPage } from '@/pages/AlertasPage'
 import { AlertaDetalhePage } from '@/pages/AlertaDetalhePage'
 import { ConfiguracoesPage } from '@/pages/ConfiguracoesPage'
 import { ProvedoresPage } from '@/pages/ProvedoresPage'
+import { NotificacoesPage } from '@/pages/NotificacoesPage'
+import { NotificationBell } from '@/components/notificacoes/NotificationBell'
 import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/app-sidebar'
 import {
@@ -33,6 +35,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/alertas': 'Alertas',
   '/configuracoes': 'Configurações',
   '/provedores': 'Provedores',
+  '/notificacoes': 'Notificações',
 }
 
 function ProtectedLayout() {
@@ -66,6 +69,9 @@ function ProtectedLayout() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </header>
         <main className="flex-1 p-4">
           <Outlet />
@@ -89,6 +95,7 @@ const router = createBrowserRouter([
       { path: 'alertas', element: <AlertasPage /> },
       { path: 'configuracoes', element: <ConfiguracoesPage /> },
       { path: 'provedores', element: <ProvedoresPage /> },
+      { path: 'notificacoes', element: <NotificacoesPage /> },
     ],
   },
 ])
