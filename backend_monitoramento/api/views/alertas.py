@@ -1,3 +1,4 @@
+from django.db.models import Case, IntegerField, When
 from rest_framework import viewsets
 
 from alertas.models import Alerta
@@ -26,9 +27,20 @@ class AlertaViewSet(viewsets.ModelViewSet):
         select_related('usina__garantia') evita N+1 no calculo de com_garantia (T-2-10).
         select_related('catalogo_alarme') evita N+1 no detalhe.
         """
+        # Ordenação: nível (crítico → importante → aviso → info) e depois por data desc.
+        # Garante que usuário sempre vê os alertas mais severos primeiro.
         return Alerta.objects.select_related(
             'usina', 'usina__garantia', 'catalogo_alarme'
-        ).order_by('-inicio')
+        ).annotate(
+            nivel_ordem=Case(
+                When(nivel='critico', then=0),
+                When(nivel='importante', then=1),
+                When(nivel='aviso', then=2),
+                When(nivel='info', then=3),
+                default=4,
+                output_field=IntegerField(),
+            ),
+        ).order_by('nivel_ordem', '-inicio')
 
     def get_serializer_class(self):
         if self.action == 'list':
