@@ -8,7 +8,7 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table'
-import type { AlertaResumo, EstadoAlerta, NivelAlerta } from '@/types/alertas'
+import { CATEGORIA_LABELS, type AlertaResumo, type EstadoAlerta, type NivelAlerta } from '@/types/alertas'
 
 interface AlertasTableProps {
   alertas: AlertaResumo[]
@@ -25,18 +25,6 @@ const NIVEL_CONFIG: Record<NivelAlerta, { label: string; className?: string; var
 const ESTADO_LABEL: Record<EstadoAlerta, string> = {
   ativo: 'Ativo',
   resolvido: 'Resolvido',
-}
-
-const CATEGORIA_LABELS: Record<string, string> = {
-  tensao_zero: 'Tensao zero',
-  sobretensao: 'Sobretensao',
-  corrente_baixa: 'Corrente baixa',
-  sem_geracao_diurna: 'Sem geracao (dia)',
-  sem_comunicacao: 'Sem comunicacao',
-  geracao_abaixo: 'Geracao abaixo',
-  geracao_acima: 'Geracao acima',
-  temperatura_alta: 'Temperatura alta',
-  outro: 'Outro',
 }
 
 export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
@@ -82,9 +70,9 @@ export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
                 </TableCell>
                 <TableCell>{ESTADO_LABEL[alerta.estado] || alerta.estado}</TableCell>
                 <TableCell>
-                  {alerta.categoria ? (
+                  {alerta.categoria_efetiva ? (
                     <span className="text-xs text-muted-foreground">
-                      {CATEGORIA_LABELS[alerta.categoria] || alerta.categoria}
+                      {CATEGORIA_LABELS[alerta.categoria_efetiva] || alerta.categoria_efetiva}
                     </span>
                   ) : '—'}
                 </TableCell>

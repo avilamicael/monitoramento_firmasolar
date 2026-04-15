@@ -22,6 +22,7 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import type { InversorResumo } from '@/types/usinas'
+import { CATEGORIA_LABELS } from '@/types/alertas'
 
 const PROVEDOR_LABELS: Record<string, string> = {
   solis: 'Solis Cloud',
@@ -98,17 +99,6 @@ const NIVEL_CONFIG: Record<string, { label: string; className?: string; variant?
   importante: { label: 'Importante', className: 'bg-orange-100 text-orange-800 hover:bg-orange-100' },
   aviso: { label: 'Aviso', variant: 'secondary' },
   info: { label: 'Info', variant: 'outline' },
-}
-
-const CATEGORIA_LABELS: Record<string, string> = {
-  tensao_zero: 'Tensao zero',
-  sobretensao: 'Sobretensao',
-  corrente_baixa: 'Corrente baixa',
-  sem_geracao_diurna: 'Sem geracao (dia)',
-  sem_comunicacao: 'Sem comunicacao',
-  geracao_abaixo: 'Geracao abaixo',
-  geracao_acima: 'Geracao acima',
-  temperatura_alta: 'Temperatura alta',
 }
 
 export function UsinaDetalhePage() {
@@ -390,9 +380,9 @@ export function UsinaDetalhePage() {
                           ) : (
                             <Badge variant="destructive" className="text-xs">Ativo</Badge>
                           )}
-                          {alerta.categoria && (
+                          {alerta.categoria_efetiva && (
                             <span className="text-xs text-muted-foreground">
-                              {CATEGORIA_LABELS[alerta.categoria] || alerta.categoria}
+                              {CATEGORIA_LABELS[alerta.categoria_efetiva] || alerta.categoria_efetiva}
                             </span>
                           )}
                         </div>

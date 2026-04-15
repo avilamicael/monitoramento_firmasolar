@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertaEstadoForm } from '@/components/alertas/AlertaEstadoForm'
 import { useAlerta } from '@/hooks/use-alertas'
-import type { NivelAlerta, EstadoAlerta } from '@/types/alertas'
+import { CATEGORIA_LABELS, type NivelAlerta, type EstadoAlerta } from '@/types/alertas'
 
 const NIVEL_CONFIG: Record<NivelAlerta, { label: string; className?: string; variant?: 'destructive' | 'secondary' | 'outline' }> = {
   critico: { label: 'Critico', variant: 'destructive' },
@@ -18,18 +18,6 @@ const NIVEL_CONFIG: Record<NivelAlerta, { label: string; className?: string; var
 const ESTADO_LABEL: Record<EstadoAlerta, string> = {
   ativo: 'Ativo',
   resolvido: 'Resolvido',
-}
-
-const CATEGORIA_LABELS: Record<string, string> = {
-  tensao_zero: 'Tensao zero — usina desligada',
-  sobretensao: 'Sobretensao — tensao AC >= 240V',
-  corrente_baixa: 'Corrente baixa prolongada',
-  sem_geracao_diurna: 'Sem geracao em horario comercial (8h-18h)',
-  sem_comunicacao: 'Sem comunicacao — possivel falha de Wi-Fi',
-  geracao_abaixo: 'Geracao abaixo do previsto',
-  geracao_acima: 'Geracao acima do previsto',
-  temperatura_alta: 'Temperatura elevada do inversor',
-  outro: 'Outro',
 }
 
 const PROVEDOR_LABELS: Record<string, string> = {
@@ -134,8 +122,8 @@ export function AlertaDetalhePage() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <NivelBadge nivel={data.nivel} />
-                {data.categoria ? (
-                  <CardTitle className="text-lg">{CATEGORIA_LABELS[data.categoria] || data.categoria}</CardTitle>
+                {data.categoria_efetiva ? (
+                  <CardTitle className="text-lg">{CATEGORIA_LABELS[data.categoria_efetiva] || data.categoria_efetiva}</CardTitle>
                 ) : (
                   <CardTitle className="text-lg">Alerta do Provedor</CardTitle>
                 )}
@@ -187,10 +175,10 @@ export function AlertaDetalhePage() {
               <dt className="text-muted-foreground font-medium">Fim</dt>
               <dd className="mt-1">{data.fim ? new Date(data.fim).toLocaleString('pt-BR') : 'Em andamento'}</dd>
             </div>
-            {data.categoria && (
+            {data.categoria_efetiva && (
               <div className="sm:col-span-2">
                 <dt className="text-muted-foreground font-medium">Categoria</dt>
-                <dd className="mt-1">{CATEGORIA_LABELS[data.categoria] || data.categoria}</dd>
+                <dd className="mt-1">{CATEGORIA_LABELS[data.categoria_efetiva] || data.categoria_efetiva}</dd>
               </div>
             )}
             <div className="sm:col-span-2">
