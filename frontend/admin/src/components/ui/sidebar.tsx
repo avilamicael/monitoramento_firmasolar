@@ -23,7 +23,6 @@ import {
 import { PanelLeftIcon } from "lucide-react"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
@@ -67,15 +66,10 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  // Lê o cookie no mount — mantém o estado do sidebar entre recargas.
-  const [_open, _setOpen] = React.useState<boolean>(() => {
-    if (typeof document === "undefined") return defaultOpen
-    const match = document.cookie.match(
-      new RegExp(`(?:^|;\\s*)${SIDEBAR_COOKIE_NAME}=([^;]+)`),
-    )
-    if (!match) return defaultOpen
-    return match[1] === "true"
-  })
+  // Sempre inicia expandido — evita esconder nome/avatar quando cookie fica travado
+  // em estado "collapsed" de um toggle anterior. O estado persiste durante a sessão;
+  // reload abre sempre expandido (comportamento consistente).
+  const [_open, _setOpen] = React.useState<boolean>(defaultOpen)
   const open = openProp ?? _open
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
@@ -86,8 +80,10 @@ function SidebarProvider({
         _setOpen(openState)
       }
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      // Cookie removido intencionalmente — não persistimos mais o estado entre
+      // sessões para evitar que o sidebar abra colapsado e esconda nome/avatar.
+      // Apagamos qualquer cookie legado.
+      document.cookie = `${SIDEBAR_COOKIE_NAME}=; path=/; max-age=0`
     },
     [setOpenProp, open]
   )
