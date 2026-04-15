@@ -5,6 +5,7 @@ import api from '@/lib/api'
 interface User {
   email: string
   name: string
+  is_staff: boolean
 }
 
 interface AuthState {
@@ -30,6 +31,27 @@ function isTokenValid(token: string): boolean {
   }
 }
 
+interface MeResponse {
+  id: number
+  email: string
+  username: string
+  name: string
+  is_staff: boolean
+}
+
+async function buscarPerfil(): Promise<User | null> {
+  try {
+    const { data } = await api.get<MeResponse>('/api/auth/me/')
+    return {
+      email: data.email || data.username,
+      name: data.name || data.email || data.username,
+      is_staff: !!data.is_staff,
+    }
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -39,21 +61,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
-    if (token && isTokenValid(token)) {
-      try {
-        const payload = jwtDecode<{ email?: string; username?: string; name?: string }>(token)
-        const email = payload.email ?? payload.username ?? ''
-        setState({
-          user: { email, name: payload.name ?? email ?? 'Admin' },
-          isAuthenticated: true,
-          isLoading: false,
-        })
-      } catch {
+    if (!token || !isTokenValid(token)) {
+      setState({ user: null, isAuthenticated: false, isLoading: false })
+      return
+    }
+
+    // Token válido — marca como autenticado e busca perfil em paralelo.
+    // Perfil vem do backend para ter email/nome/is_staff confiáveis.
+    setState({ user: null, isAuthenticated: true, isLoading: true })
+    void buscarPerfil().then((user) => {
+      if (user) {
+        setState({ user, isAuthenticated: true, isLoading: false })
+      } else {
+        // Falha ao buscar perfil mas token parecia válido — logout defensivo.
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
         setState({ user: null, isAuthenticated: false, isLoading: false })
       }
-    } else {
-      setState({ user: null, isAuthenticated: false, isLoading: false })
-    }
+    })
   }, [])
 
   async function login(email: string, password: string) {
@@ -61,23 +86,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await api.post('/api/auth/token/', { username: email, password })
     localStorage.setItem('access_token', data.access)
     localStorage.setItem('refresh_token', data.refresh)
-    try {
-      const payload = jwtDecode<{ email?: string; username?: string; name?: string }>(data.access)
-      // Usar email do parametro como fallback pois simplejwt pode nao incluir 'email' no payload
-      const resolvedEmail = payload.email ?? payload.username ?? email
-      setState({
-        user: { email: resolvedEmail, name: payload.name ?? resolvedEmail },
-        isAuthenticated: true,
-        isLoading: false,
-      })
-    } catch {
-      // Fallback: usar email fornecido no login
-      setState({
-        user: { email, name: email },
-        isAuthenticated: true,
-        isLoading: false,
-      })
-    }
+
+    const user = await buscarPerfil()
+    setState({
+      user: user ?? { email, name: email, is_staff: false },
+      isAuthenticated: true,
+      isLoading: false,
+    })
   }
 
   function logout() {
