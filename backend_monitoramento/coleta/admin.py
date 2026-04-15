@@ -1,5 +1,25 @@
 from django.contrib import admin
-from .models import LogColeta
+from .models import ConfiguracaoSistema, LogColeta
+
+
+@admin.register(ConfiguracaoSistema)
+class ConfiguracaoSistemaAdmin(admin.ModelAdmin):
+    list_display = [
+        '__str__',
+        'dias_sem_comunicacao_pausar',
+        'meses_garantia_padrao',
+        'dias_aviso_garantia_proxima',
+        'dias_aviso_garantia_urgente',
+        'atualizado_em',
+    ]
+    readonly_fields = ['atualizado_em']
+
+    def has_add_permission(self, request):
+        # Singleton — não permite criar mais de uma linha
+        return not ConfiguracaoSistema.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(LogColeta)

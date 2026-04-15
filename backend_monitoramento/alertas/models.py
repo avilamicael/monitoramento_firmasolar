@@ -206,6 +206,7 @@ class Alerta(models.Model):
         ('geracao_abaixo',      'Geração abaixo do previsto'),
         ('geracao_acima',       'Geração acima do previsto'),
         ('temperatura_alta',    'Temperatura elevada do inversor'),
+        ('garantia_expirando',  'Garantia próxima do fim'),
         ('outro',               'Outro'),
     ]
 

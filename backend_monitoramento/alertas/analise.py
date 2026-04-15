@@ -41,8 +41,53 @@ CORRENTE_MINIMA_A = 0.1
 CORRENTE_BAIXA_HORAS = 2
 
 
+def _tem_garantia_ativa(usina: Usina) -> bool:
+    """Retorna True se a usina tem garantia registrada e ainda ativa."""
+    garantia = getattr(usina, 'garantia', None)
+    return garantia is not None and garantia.ativa
+
+
+def _verificar_garantia_expirando(usina: Usina) -> None:
+    """Cria/resolve alerta quando a garantia está perto do fim.
+
+    Limites em ConfiguracaoSistema: dias_aviso_garantia_proxima e _urgente.
+    """
+    from coleta.models import ConfiguracaoSistema
+
+    garantia = getattr(usina, 'garantia', None)
+    chave = str(usina.id_usina_provedor)
+    if garantia is None or not garantia.ativa:
+        _resolver_alerta_interno(usina, 'garantia_expirando', chave)
+        return
+
+    config = ConfiguracaoSistema.obter()
+    dias = garantia.dias_restantes
+    if dias > config.dias_aviso_garantia_proxima:
+        _resolver_alerta_interno(usina, 'garantia_expirando', chave)
+        return
+
+    nivel = 'importante' if dias <= config.dias_aviso_garantia_urgente else 'aviso'
+    _enriquecer_ou_criar(
+        usina=usina,
+        categoria='garantia_expirando',
+        chave=chave,
+        nivel=nivel,
+        mensagem=f'Garantia da usina termina em {dias} dia(s) — data fim: {garantia.data_fim.strftime("%d/%m/%Y")}',
+        sugestao='Entrar em contato com o cliente para renovação antes do fim da garantia.',
+    )
+
+
 def analisar_usina(usina: Usina, snapshot: SnapshotUsina, inversores_snapshots: list[tuple[Inversor, SnapshotInversor | None]]) -> None:
-    """Analisa dados de uma usina e seus inversores. Alertas agrupados por usina+categoria."""
+    """Analisa dados de uma usina e seus inversores. Alertas agrupados por usina+categoria.
+
+    Só gera alertas para usinas com garantia ativa. Usinas sem garantia (ou garantia expirada)
+    continuam sendo coletadas — os dados viram métricas de dashboard — mas não produzem alertas.
+    """
+    if not _tem_garantia_ativa(usina):
+        return
+
+    _verificar_garantia_expirando(usina)
+
     agora = dj_timezone.now()
 
     try:

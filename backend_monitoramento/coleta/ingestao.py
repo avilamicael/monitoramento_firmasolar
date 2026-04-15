@@ -16,8 +16,9 @@ from django.db import models, transaction
 from django.utils import timezone as dj_timezone
 
 from provedores.base import DadosUsina, DadosInversor, DadosAlerta
-from usinas.models import Usina, SnapshotUsina, Inversor, SnapshotInversor
+from usinas.models import Usina, SnapshotUsina, Inversor, SnapshotInversor, GarantiaUsina
 from alertas.models import Alerta, CatalogoAlarme, RegraSupressao
+from coleta.models import ConfiguracaoSistema
 from alertas.categorizacao import inferir_categoria
 from alertas.supressao_inteligente import e_desligamento_gradual
 
@@ -46,8 +47,9 @@ class ServicoIngestao:
         self.coletado_em = _arredondar_coletado_em(dj_timezone.now())
 
     def upsert_usina(self, dados: DadosUsina) -> Usina:
-        """Cria ou recupera a usina. Atualiza nome/endereço se mudaram."""
-        usina, _ = Usina.objects.get_or_create(
+        """Cria ou recupera a usina. Atualiza nome/endereço se mudaram.
+        Na primeira inserção, também cria a garantia padrão (meses configuráveis)."""
+        usina, criada = Usina.objects.get_or_create(
             id_usina_provedor=dados.id_usina_provedor,
             provedor=self.credencial.provedor,
             defaults={
@@ -58,6 +60,16 @@ class ServicoIngestao:
                 'endereco': dados.endereco,
             },
         )
+        if criada:
+            config = ConfiguracaoSistema.obter()
+            GarantiaUsina.objects.get_or_create(
+                usina=usina,
+                defaults={
+                    'data_inicio': dj_timezone.localdate(),
+                    'meses': config.meses_garantia_padrao,
+                    'observacoes': 'Garantia padrão criada automaticamente no primeiro registro da usina.',
+                },
+            )
         campos_alterados = []
         if usina.nome != dados.nome:
             usina.nome = dados.nome

@@ -19,7 +19,7 @@ from provedores.registro import get_adaptador
 from provedores.excecoes import ProvedorErroAuth, ProvedorErroRateLimit
 from provedores.limitador import LimitadorRequisicoes
 from coleta.ingestao import ServicoIngestao
-from coleta.models import LogColeta
+from coleta.models import ConfiguracaoSistema, LogColeta
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,36 @@ def disparar_coleta_geral():
     return total
 
 
+def _pausar_usinas_inativas(provedor: str) -> int:
+    """
+    Desativa (ativo=False) usinas cujo último snapshot está mais antigo que
+    o configurado em ConfiguracaoSistema.dias_sem_comunicacao_pausar.
+
+    Usinas sem nenhum snapshot ainda registrado são ignoradas (recém-criadas).
+    Para retomar uma usina pausada, reativar manualmente no admin.
+    """
+    from datetime import timedelta
+    from django.utils import timezone as tz
+    from usinas.models import Usina
+
+    config = ConfiguracaoSistema.obter()
+    limite = tz.now() - timedelta(days=config.dias_sem_comunicacao_pausar)
+
+    pausadas = Usina.objects.filter(
+        provedor=provedor,
+        ativo=True,
+        ultimo_snapshot__isnull=False,
+        ultimo_snapshot__coletado_em__lt=limite,
+    ).update(ativo=False)
+
+    if pausadas:
+        logger.info(
+            '%s: %d usina(s) pausada(s) por inatividade (>%d dias sem coleta)',
+            provedor, pausadas, config.dias_sem_comunicacao_pausar,
+        )
+    return pausadas
+
+
 @shared_task(
     bind=True,
     max_retries=3,
@@ -84,6 +114,10 @@ def coletar_dados_provedor(self, credencial_id: str):
     except CredencialProvedor.DoesNotExist:
         logger.warning('Credencial %s não encontrada ou inativa', credencial_id)
         return
+
+    # Auto-pausa de usinas inativas antes de coletar — evita reprocessar usinas
+    # que não comunicam há mais tempo que o limite configurado.
+    _pausar_usinas_inativas(credencial.provedor)
 
     credenciais_dict = descriptografar_credenciais(credencial.credenciais_enc)
 
@@ -160,6 +194,14 @@ def coletar_dados_provedor(self, credencial_id: str):
 
         # 4. Persistir tudo em transação atômica + análise de alertas internos
         from alertas.analise import analisar_usina
+        from usinas.models import Usina
+
+        # IDs de usinas pausadas para este provedor — não processar snapshot nem alertas
+        ids_pausadas = set(
+            Usina.objects
+            .filter(provedor=credencial.provedor, ativo=False)
+            .values_list('id_usina_provedor', flat=True)
+        )
 
         ingestao = ServicoIngestao(credencial)
         usinas_por_id_provedor = {}
@@ -167,6 +209,8 @@ def coletar_dados_provedor(self, credencial_id: str):
 
         with transaction.atomic():
             for dados_usina in dados_usinas:
+                if dados_usina.id_usina_provedor in ids_pausadas:
+                    continue
                 usina = ingestao.upsert_usina(dados_usina)
                 snapshot_usina = ingestao.criar_snapshot_usina(usina, dados_usina)
                 usinas_por_id_provedor[dados_usina.id_usina_provedor] = usina
