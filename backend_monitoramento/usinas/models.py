@@ -33,6 +33,12 @@ class Usina(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     ativo = models.BooleanField(default=True)
+    # Limite para disparar alerta interno de sobretensão (por usina, pois varia por região da rede)
+    tensao_sobretensao_v = models.FloatField(
+        default=240.0,
+        verbose_name='Limite de sobretensão AC (V)',
+        help_text='Tensão AC a partir da qual gerar alerta de sobretensão. Padrão 240V — ajustar por região se necessário.',
+    )
     # Último snapshot salvo — desnormalizado para consultas rápidas
     ultimo_snapshot = models.OneToOneField(
         'SnapshotUsina',

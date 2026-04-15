@@ -23,6 +23,10 @@ import {
 } from '@/components/ui/table'
 import type { InversorResumo } from '@/types/usinas'
 import { CATEGORIA_LABELS } from '@/types/alertas'
+import { Button } from '@/components/ui/button'
+import { ConfigAlertasDialog } from '@/components/usinas/ConfigAlertasDialog'
+import { useState } from 'react'
+import { PencilIcon } from 'lucide-react'
 
 const PROVEDOR_LABELS: Record<string, string> = {
   solis: 'Solis Cloud',
@@ -103,8 +107,9 @@ const NIVEL_CONFIG: Record<string, { label: string; className?: string; variant?
 
 export function UsinaDetalhePage() {
   const { id } = useParams<{ id: string }>()
-  const { data, loading, error } = useUsina(id!)
+  const { data, loading, error, refetch } = useUsina(id!)
   const alertas = useAlertas({ usina: id })
+  const [configOpen, setConfigOpen] = useState(false)
 
   if (loading) {
     return (
@@ -222,9 +227,34 @@ export function UsinaDetalhePage() {
                 <dt className="text-xs text-muted-foreground">Provedor</dt>
                 <dd className="text-sm font-medium">{PROVEDOR_LABELS[data.provedor] || data.provedor}</dd>
               </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Limite de sobretensão</dt>
+                <dd className="text-sm font-medium flex items-center gap-2">
+                  {data.tensao_sobretensao_v} V
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={() => setConfigOpen(true)}
+                    aria-label="Editar limite de sobretensão"
+                  >
+                    <PencilIcon className="size-3" />
+                  </Button>
+                </dd>
+              </div>
             </dl>
           </CardContent>
         </Card>
+
+        <ConfigAlertasDialog
+          open={configOpen}
+          usinaId={data.id}
+          usinaNome={data.nome}
+          valorAtual={data.tensao_sobretensao_v}
+          onClose={() => setConfigOpen(false)}
+          onSuccess={() => void refetch()}
+        />
+
 
         <Card>
           <CardHeader>

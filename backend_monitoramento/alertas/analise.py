@@ -36,7 +36,7 @@ HORA_INICIO_CORRENTE = 9
 HORA_FIM_CORRENTE = 17
 
 # Thresholds
-TENSAO_SOBRETENSAO_V = 240.0
+TENSAO_SOBRETENSAO_V_PADRAO = 240.0  # fallback — cada usina tem seu próprio threshold
 CORRENTE_MINIMA_A = 0.1
 CORRENTE_BAIXA_HORAS = 2
 
@@ -111,6 +111,8 @@ def analisar_usina(usina: Usina, snapshot: SnapshotUsina, inversores_snapshots: 
     inversores_sobretensao = []
     inversores_corrente_baixa = []
 
+    limite_sobretensao = usina.tensao_sobretensao_v or TENSAO_SOBRETENSAO_V_PADRAO
+
     for inversor, snap_inv in inversores_snapshots:
         if snap_inv is None:
             continue
@@ -120,7 +122,7 @@ def analisar_usina(usina: Usina, snapshot: SnapshotUsina, inversores_snapshots: 
             inversores_tensao_zero.append((inversor, snap_inv))
 
         # Sobretensao
-        if snap_inv.tensao_ac_v is not None and snap_inv.tensao_ac_v >= TENSAO_SOBRETENSAO_V:
+        if snap_inv.tensao_ac_v is not None and snap_inv.tensao_ac_v >= limite_sobretensao:
             inversores_sobretensao.append((inversor, snap_inv))
 
         # Corrente baixa (progressivo — verifica historico)
@@ -130,7 +132,7 @@ def analisar_usina(usina: Usina, snapshot: SnapshotUsina, inversores_snapshots: 
 
     # Gerar alertas agrupados
     _alerta_agrupado_tensao_zero(usina, inversores_tensao_zero, inversores_snapshots)
-    _alerta_agrupado_sobretensao(usina, inversores_sobretensao, inversores_snapshots)
+    _alerta_agrupado_sobretensao(usina, inversores_sobretensao, inversores_snapshots, limite_sobretensao)
     _alerta_agrupado_corrente_baixa(usina, inversores_corrente_baixa, inversores_snapshots)
 
 
@@ -152,7 +154,7 @@ def _alerta_agrupado_tensao_zero(usina, afetados, todos):
         _resolver_alerta_interno(usina, 'tensao_zero', chave)
 
 
-def _alerta_agrupado_sobretensao(usina, afetados, todos):
+def _alerta_agrupado_sobretensao(usina, afetados, todos, limite):
     chave = str(usina.id_usina_provedor)
     if afetados:
         detalhes = [f'{inv.numero_serie}: {snap.tensao_ac_v:.1f}V' for inv, snap in afetados]
@@ -161,7 +163,7 @@ def _alerta_agrupado_sobretensao(usina, afetados, todos):
             categoria='sobretensao',
             chave=chave,
             nivel='aviso',
-            mensagem=f'Sobretensao em {len(afetados)} inversor(es) — {", ".join(detalhes)} (limite: {TENSAO_SOBRETENSAO_V}V)',
+            mensagem=f'Sobretensao em {len(afetados)} inversor(es) — {", ".join(detalhes)} (limite: {limite}V)',
             sugestao='Tensao acima do normal. Monitorar — risco de desligamento por protecao do inversor.',
         )
     else:

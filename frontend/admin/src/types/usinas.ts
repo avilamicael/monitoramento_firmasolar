@@ -65,6 +65,7 @@ export interface UsinaDetalhe {
   latitude: number | null
   longitude: number | null
   status_garantia: StatusGarantia
+  tensao_sobretensao_v: number
   ultimo_snapshot: SnapshotUsina | null
   inversores: InversorResumo[]
   criado_em: string
@@ -81,4 +82,5 @@ export interface PaginatedUsinas {
 export interface UsinaPatch {
   nome?: string
   capacidade_kwp?: number
+  tensao_sobretensao_v?: number
 }

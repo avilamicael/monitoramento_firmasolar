@@ -75,6 +75,7 @@ class UsinaDetalheSerializer(serializers.ModelSerializer):
             'id', 'nome', 'provedor', 'capacidade_kwp', 'ativo',
             'fuso_horario', 'endereco', 'cidade', 'telefone',
             'latitude', 'longitude', 'status_garantia',
+            'tensao_sobretensao_v',
             'ultimo_snapshot', 'inversores', 'criado_em', 'atualizado_em',
         ]
 
@@ -87,8 +88,17 @@ class UsinaDetalheSerializer(serializers.ModelSerializer):
 
 
 class UsinaPatchSerializer(serializers.ModelSerializer):
-    """Serializer de escrita para PATCH /api/usinas/{id}/ — apenas nome e capacidade (USN-03, T-2-04)."""
+    """Serializer de escrita para PATCH /api/usinas/{id}/ — apenas campos editáveis pelo operador (USN-03, T-2-04)."""
 
     class Meta:
         model = Usina
-        fields = ['nome', 'capacidade_kwp']
+        fields = ['nome', 'capacidade_kwp', 'tensao_sobretensao_v']
+
+    def validate_tensao_sobretensao_v(self, valor):
+        if valor is None:
+            return 240.0
+        if valor < 180 or valor > 280:
+            raise serializers.ValidationError(
+                'Limite fora da faixa razoável (180V a 280V).'
+            )
+        return valor
