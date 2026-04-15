@@ -33,6 +33,10 @@ def enviar_notificacao_alerta(self, alerta_id: str, motivo: str) -> None:
         logger.warning('Notificação ignorada: alerta %s não encontrado no banco', alerta_id)
         return
 
+    # Persiste notificação no painel (independente do envio por canal externo).
+    # Falha aqui não deve bloquear o envio por email/WhatsApp — só logada.
+    _persistir_notificacao_painel(alerta, motivo)
+
     servico = ServicoNotificacao()
     try:
         if motivo == 'novo':
@@ -44,3 +48,22 @@ def enviar_notificacao_alerta(self, alerta_id: str, motivo: str) -> None:
     except Exception as exc:
         logger.error('Erro ao enviar notificação para alerta %s: %s', alerta_id, exc)
         raise self.retry(exc=exc)
+
+
+def _persistir_notificacao_painel(alerta, motivo: str) -> None:
+    """Cria registro em Notificacao para aparecer no painel dos usuários."""
+    from notificacoes.models import Notificacao
+
+    try:
+        prefixo = 'Novo alerta' if motivo == 'novo' else 'Alerta escalado'
+        titulo = f'{prefixo} — {alerta.usina.nome}'
+        Notificacao.objects.create(
+            titulo=titulo[:200],
+            mensagem=alerta.mensagem,
+            tipo='alerta',
+            nivel=alerta.nivel,
+            link=f'/alertas/{alerta.id}',
+            apenas_staff=False,
+        )
+    except Exception as exc:
+        logger.warning('Falha ao persistir notificação no painel para %s: %s', alerta.id, exc)

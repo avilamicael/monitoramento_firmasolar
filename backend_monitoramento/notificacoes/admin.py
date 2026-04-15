@@ -1,5 +1,26 @@
 from django.contrib import admin
-from .models import ConfiguracaoNotificacao
+from .models import ConfiguracaoNotificacao, Notificacao, NotificacaoLeitura
+
+
+@admin.register(Notificacao)
+class NotificacaoAdmin(admin.ModelAdmin):
+    list_display = ['titulo', 'tipo', 'nivel', 'apenas_staff', 'criado_em']
+    list_filter = ['tipo', 'nivel', 'apenas_staff']
+    search_fields = ['titulo', 'mensagem']
+    readonly_fields = ['id', 'criado_em']
+    date_hierarchy = 'criado_em'
+
+
+@admin.register(NotificacaoLeitura)
+class NotificacaoLeituraAdmin(admin.ModelAdmin):
+    list_display = ['usuario', 'notificacao', 'lida_em']
+    readonly_fields = ['usuario', 'notificacao', 'lida_em']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(ConfiguracaoNotificacao)
