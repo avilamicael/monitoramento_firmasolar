@@ -13,12 +13,13 @@
         "name": "filtro",
         "label": "Visualizar",
         "type": "custom",
-        "query": "abertos,critico,sistema_desligado,em_atendimento,resolvidos_24h",
+        "query": "abertos,critico,importante,aviso,sistema_desligado,resolvidos_24h",
         "options": [
           { "text": "Alertas Abertos",    "value": "abertos",           "selected": true  },
           { "text": "Críticos Ativos",    "value": "critico",           "selected": false },
+          { "text": "Importantes Ativos", "value": "importante",        "selected": false },
+          { "text": "Avisos Ativos",      "value": "aviso",             "selected": false },
           { "text": "Sistema Desligado",  "value": "sistema_desligado", "selected": false },
-          { "text": "Em Atendimento",     "value": "em_atendimento",    "selected": false },
           { "text": "Resolvidos (24h)",   "value": "resolvidos_24h",    "selected": false }
         ],
         "current": { "text": "Alertas Abertos", "value": "abertos" },
@@ -63,7 +64,7 @@
       "targets": [
         {
           "datasource": { "uid": "postgres-firmasolar" },
-          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta a LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE ('${filtro}' = 'abertos' AND a.estado IN ('ativo','em_atendimento')) OR ('${filtro}' = 'critico' AND a.estado IN ('ativo','em_atendimento') AND a.nivel = 'critico') OR ('${filtro}' = 'sistema_desligado' AND a.estado IN ('ativo','em_atendimento') AND ca.tipo = 'sistema_desligado') OR ('${filtro}' = 'em_atendimento' AND a.estado = 'em_atendimento') OR ('${filtro}' = 'resolvidos_24h' AND a.estado = 'resolvido' AND a.fim > NOW() - INTERVAL '24 hours')",
+          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE ('${filtro}' = 'abertos'            AND a.estado = 'ativo' AND u.ativo = true) OR ('${filtro}' = 'critico'            AND a.estado = 'ativo' AND u.ativo = true AND a.nivel = 'critico') OR ('${filtro}' = 'importante'         AND a.estado = 'ativo' AND u.ativo = true AND a.nivel = 'importante') OR ('${filtro}' = 'aviso'              AND a.estado = 'ativo' AND u.ativo = true AND a.nivel = 'aviso') OR ('${filtro}' = 'sistema_desligado'  AND a.estado = 'ativo' AND u.ativo = true AND COALESCE(NULLIF(a.categoria,''), ca.tipo) = 'sistema_desligado') OR ('${filtro}' = 'resolvidos_24h'     AND a.estado = 'resolvido' AND a.fim > NOW() - INTERVAL '24 hours')",
           "format": "table",
           "refId": "A"
         }
@@ -103,13 +104,26 @@
           {
             "matcher": { "id": "byName", "options": "Estado" },
             "properties": [
-              { "id": "custom.width", "value": 130 },
+              { "id": "custom.width", "value": 110 },
               {
                 "id": "mappings",
                 "value": [
-                  { "type": "value", "options": { "ativo":          { "text": "Ativo",          "color": "orange", "index": 0 } } },
-                  { "type": "value", "options": { "em_atendimento": { "text": "Em Atendimento", "color": "blue",   "index": 1 } } },
-                  { "type": "value", "options": { "resolvido":      { "text": "Resolvido",      "color": "green",  "index": 2 } } }
+                  { "type": "value", "options": { "ativo":     { "text": "Ativo",     "color": "orange", "index": 0 } } },
+                  { "type": "value", "options": { "resolvido": { "text": "Resolvido", "color": "green",  "index": 1 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Origem" },
+            "properties": [
+              { "id": "custom.width", "value": 100 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "interno":  { "text": "Interno",  "color": "purple", "index": 0 } } },
+                  { "type": "value", "options": { "provedor": { "text": "Provedor", "color": "blue",   "index": 1 } } }
                 ]
               },
               { "id": "custom.displayMode", "value": "color-background" }
@@ -122,11 +136,17 @@
               {
                 "id": "mappings",
                 "value": [
-                  { "type": "value", "options": { "sistema_desligado": { "text": "Sistema Desligado", "index": 0 } } },
-                  { "type": "value", "options": { "equipamento":       { "text": "Equipamento",       "index": 1 } } },
-                  { "type": "value", "options": { "rede_eletrica":     { "text": "Rede Elétrica",     "index": 2 } } },
-                  { "type": "value", "options": { "comunicacao":       { "text": "Comunicação",       "index": 3 } } },
-                  { "type": "value", "options": { "preventivo":        { "text": "Preventivo",        "index": 4 } } }
+                  { "type": "value", "options": { "sistema_desligado":  { "text": "Sistema Desligado",  "index": 0 } } },
+                  { "type": "value", "options": { "equipamento":        { "text": "Equipamento",        "index": 1 } } },
+                  { "type": "value", "options": { "rede_eletrica":      { "text": "Rede Elétrica",      "index": 2 } } },
+                  { "type": "value", "options": { "comunicacao":        { "text": "Comunicação",        "index": 3 } } },
+                  { "type": "value", "options": { "preventivo":         { "text": "Preventivo",         "index": 4 } } },
+                  { "type": "value", "options": { "tensao_zero":        { "text": "Tensão Zero",        "index": 5 } } },
+                  { "type": "value", "options": { "sobretensao":        { "text": "Sobretensão",        "index": 6 } } },
+                  { "type": "value", "options": { "corrente_baixa":     { "text": "Corrente Baixa",     "index": 7 } } },
+                  { "type": "value", "options": { "sem_geracao_diurna": { "text": "Sem Geração (dia)",  "index": 8 } } },
+                  { "type": "value", "options": { "sem_comunicacao":    { "text": "Sem Comunicação",    "index": 9 } } },
+                  { "type": "value", "options": { "garantia_expirando": { "text": "Garantia Expirando", "index": 10 } } }
                 ]
               }
             ]
@@ -134,8 +154,8 @@
           {
             "matcher": { "id": "byName", "options": "Duração" },
             "properties": [
-              { "id": "custom.width", "value": 110 },
-              { "id": "unit", "value": "s" },
+              { "id": "custom.width", "value": 130 },
+              { "id": "unit", "value": "dtdurations" },
               { "id": "decimals", "value": 0 }
             ]
           },
@@ -173,7 +193,7 @@
       "targets": [
         {
           "datasource": { "uid": "postgres-firmasolar" },
-          "rawSql": "SELECT u.nome AS \"Usina\", a.nivel AS \"Nível\", COALESCE(ca.tipo, '—') AS \"Categoria\", a.mensagem AS \"Problema\", COALESCE(NULLIF(a.equipamento_sn,''),'—') AS \"Equipamento\", a.inicio AS \"Início\", CASE WHEN a.fim IS NULL THEN EXTRACT(EPOCH FROM (NOW() - a.inicio))::bigint ELSE EXTRACT(EPOCH FROM (a.fim - a.inicio))::bigint END AS \"Duração\", a.estado AS \"Estado\", COALESCE(NULLIF(a.anotacoes,''),'—') AS \"Anotações\" FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE ('${filtro}' = 'abertos' AND a.estado IN ('ativo','em_atendimento')) OR ('${filtro}' = 'critico' AND a.estado IN ('ativo','em_atendimento') AND a.nivel = 'critico') OR ('${filtro}' = 'sistema_desligado' AND a.estado IN ('ativo','em_atendimento') AND ca.tipo = 'sistema_desligado') OR ('${filtro}' = 'em_atendimento' AND a.estado = 'em_atendimento') OR ('${filtro}' = 'resolvidos_24h' AND a.estado = 'resolvido' AND a.fim > NOW() - INTERVAL '24 hours') ORDER BY CASE a.nivel WHEN 'critico' THEN 1 WHEN 'importante' THEN 2 WHEN 'aviso' THEN 3 ELSE 4 END, a.inicio DESC",
+          "rawSql": "SELECT u.nome AS \"Usina\", a.nivel AS \"Nível\", a.origem AS \"Origem\", COALESCE(NULLIF(a.categoria,''), ca.tipo, '—') AS \"Categoria\", a.mensagem AS \"Problema\", COALESCE(NULLIF(a.equipamento_sn,''),'—') AS \"Equipamento\", a.inicio AS \"Início\", CASE WHEN a.fim IS NULL THEN EXTRACT(EPOCH FROM (NOW() - a.inicio))::bigint ELSE EXTRACT(EPOCH FROM (a.fim - a.inicio))::bigint END AS \"Duração\", a.estado AS \"Estado\", COALESCE(NULLIF(a.anotacoes,''),'—') AS \"Anotações\" FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE ('${filtro}' = 'abertos'            AND a.estado = 'ativo' AND u.ativo = true) OR ('${filtro}' = 'critico'            AND a.estado = 'ativo' AND u.ativo = true AND a.nivel = 'critico') OR ('${filtro}' = 'importante'         AND a.estado = 'ativo' AND u.ativo = true AND a.nivel = 'importante') OR ('${filtro}' = 'aviso'              AND a.estado = 'ativo' AND u.ativo = true AND a.nivel = 'aviso') OR ('${filtro}' = 'sistema_desligado'  AND a.estado = 'ativo' AND u.ativo = true AND COALESCE(NULLIF(a.categoria,''), ca.tipo) = 'sistema_desligado') OR ('${filtro}' = 'resolvidos_24h'     AND a.estado = 'resolvido' AND a.fim > NOW() - INTERVAL '24 hours') ORDER BY CASE a.nivel WHEN 'critico' THEN 1 WHEN 'importante' THEN 2 WHEN 'aviso' THEN 3 ELSE 4 END, a.inicio DESC",
           "format": "table",
           "refId": "A"
         }

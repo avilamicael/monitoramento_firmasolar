@@ -142,7 +142,7 @@
       "targets": [
         {
           "datasource": { "uid": "postgres-firmasolar" },
-          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id WHERE u.nome = '${usina}' AND a.estado IN ('ativo', 'em_atendimento')",
+          "rawSql": "SELECT COUNT(*)::int FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id WHERE u.nome = '${usina}' AND a.estado = 'ativo'",
           "format": "table",
           "refId": "A"
         }
@@ -308,13 +308,26 @@
           {
             "matcher": { "id": "byName", "options": "Estado" },
             "properties": [
-              { "id": "custom.width", "value": 130 },
+              { "id": "custom.width", "value": 110 },
               {
                 "id": "mappings",
                 "value": [
-                  { "type": "value", "options": { "ativo":          { "text": "Ativo",          "color": "orange", "index": 0 } } },
-                  { "type": "value", "options": { "em_atendimento": { "text": "Em Atendimento", "color": "blue",   "index": 1 } } },
-                  { "type": "value", "options": { "resolvido":      { "text": "Resolvido",      "color": "green",  "index": 2 } } }
+                  { "type": "value", "options": { "ativo":     { "text": "Ativo",     "color": "orange", "index": 0 } } },
+                  { "type": "value", "options": { "resolvido": { "text": "Resolvido", "color": "green",  "index": 1 } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Origem" },
+            "properties": [
+              { "id": "custom.width", "value": 100 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "interno":  { "text": "Interno",  "color": "purple", "index": 0 } } },
+                  { "type": "value", "options": { "provedor": { "text": "Provedor", "color": "blue",   "index": 1 } } }
                 ]
               },
               { "id": "custom.displayMode", "value": "color-background" }
@@ -323,15 +336,21 @@
           {
             "matcher": { "id": "byName", "options": "Categoria" },
             "properties": [
-              { "id": "custom.width", "value": 150 },
+              { "id": "custom.width", "value": 160 },
               {
                 "id": "mappings",
                 "value": [
-                  { "type": "value", "options": { "sistema_desligado": { "text": "Sistema Desligado", "index": 0 } } },
-                  { "type": "value", "options": { "equipamento":       { "text": "Equipamento",       "index": 1 } } },
-                  { "type": "value", "options": { "rede_eletrica":     { "text": "Rede Elétrica",     "index": 2 } } },
-                  { "type": "value", "options": { "comunicacao":       { "text": "Comunicação",       "index": 3 } } },
-                  { "type": "value", "options": { "preventivo":        { "text": "Preventivo",        "index": 4 } } }
+                  { "type": "value", "options": { "sistema_desligado":  { "text": "Sistema Desligado",  "index": 0 } } },
+                  { "type": "value", "options": { "equipamento":        { "text": "Equipamento",        "index": 1 } } },
+                  { "type": "value", "options": { "rede_eletrica":      { "text": "Rede Elétrica",      "index": 2 } } },
+                  { "type": "value", "options": { "comunicacao":        { "text": "Comunicação",        "index": 3 } } },
+                  { "type": "value", "options": { "preventivo":         { "text": "Preventivo",         "index": 4 } } },
+                  { "type": "value", "options": { "tensao_zero":        { "text": "Tensão Zero",        "index": 5 } } },
+                  { "type": "value", "options": { "sobretensao":        { "text": "Sobretensão",        "index": 6 } } },
+                  { "type": "value", "options": { "corrente_baixa":     { "text": "Corrente Baixa",     "index": 7 } } },
+                  { "type": "value", "options": { "sem_geracao_diurna": { "text": "Sem Geração (dia)",  "index": 8 } } },
+                  { "type": "value", "options": { "sem_comunicacao":    { "text": "Sem Comunicação",    "index": 9 } } },
+                  { "type": "value", "options": { "garantia_expirando": { "text": "Garantia Expirando", "index": 10 } } }
                 ]
               }
             ]
@@ -339,8 +358,8 @@
           {
             "matcher": { "id": "byName", "options": "Duração" },
             "properties": [
-              { "id": "custom.width", "value": 110 },
-              { "id": "unit", "value": "s" },
+              { "id": "custom.width", "value": 130 },
+              { "id": "unit", "value": "dtdurations" },
               { "id": "decimals", "value": 0 }
             ]
           },
@@ -369,7 +388,7 @@
       "targets": [
         {
           "datasource": { "uid": "postgres-firmasolar" },
-          "rawSql": "SELECT a.nivel AS \"Nível\", COALESCE(ca.tipo, '—') AS \"Categoria\", a.mensagem AS \"Problema\", COALESCE(NULLIF(a.equipamento_sn, ''), '—') AS \"Equipamento\", a.inicio AS \"Início\", a.fim AS \"Fim\", CASE WHEN a.fim IS NULL THEN EXTRACT(EPOCH FROM (NOW() - a.inicio))::bigint ELSE EXTRACT(EPOCH FROM (a.fim - a.inicio))::bigint END AS \"Duração\", a.estado AS \"Estado\", COALESCE(NULLIF(a.anotacoes, ''), '—') AS \"Anotações\" FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE u.nome = '${usina}' ORDER BY CASE a.estado WHEN 'ativo' THEN 1 WHEN 'em_atendimento' THEN 2 ELSE 3 END, a.inicio DESC",
+          "rawSql": "SELECT a.nivel AS \"Nível\", a.origem AS \"Origem\", COALESCE(NULLIF(a.categoria, ''), ca.tipo, '—') AS \"Categoria\", a.mensagem AS \"Problema\", COALESCE(NULLIF(a.equipamento_sn, ''), '—') AS \"Equipamento\", a.inicio AS \"Início\", a.fim AS \"Fim\", CASE WHEN a.fim IS NULL THEN EXTRACT(EPOCH FROM (NOW() - a.inicio))::bigint ELSE EXTRACT(EPOCH FROM (a.fim - a.inicio))::bigint END AS \"Duração\", a.estado AS \"Estado\", COALESCE(NULLIF(a.anotacoes, ''), '—') AS \"Anotações\" FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id LEFT JOIN alertas_catalogoalarme ca ON a.catalogo_alarme_id = ca.id WHERE u.nome = '${usina}' ORDER BY CASE a.estado WHEN 'ativo' THEN 1 ELSE 2 END, CASE a.nivel WHEN 'critico' THEN 1 WHEN 'importante' THEN 2 WHEN 'aviso' THEN 3 ELSE 4 END, a.inicio DESC",
           "format": "table",
           "refId": "A"
         }

@@ -41,7 +41,7 @@
       "targets": [
         {
           "datasource": { "uid": "postgres-firmasolar" },
-          "rawSql": "SELECT COUNT(DISTINCT usina_id)::int FROM alertas_alerta WHERE estado IN ('ativo','em_atendimento')",
+          "rawSql": "SELECT COUNT(DISTINCT a.usina_id)::int FROM alertas_alerta a JOIN usinas_usina u ON u.id = a.usina_id WHERE a.estado = 'ativo' AND u.ativo = true",
           "format": "table",
           "refId": "A"
         }
@@ -112,16 +112,33 @@
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Em Atendimento" },
+            "matcher": { "id": "byName", "options": "Importantes" },
             "properties": [
-              { "id": "custom.width", "value": 130 },
+              { "id": "custom.width", "value": 110 },
               { "id": "color", "value": { "mode": "thresholds" } },
               {
                 "id": "thresholds",
                 "value": {
                   "steps": [
-                    { "color": "text", "value": 0 },
-                    { "color": "blue", "value": 1 }
+                    { "color": "text",   "value": 0 },
+                    { "color": "orange", "value": 1 }
+                  ]
+                }
+              },
+              { "id": "custom.displayMode", "value": "color-text" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Avisos" },
+            "properties": [
+              { "id": "custom.width", "value": 90 },
+              { "id": "color", "value": { "mode": "thresholds" } },
+              {
+                "id": "thresholds",
+                "value": {
+                  "steps": [
+                    { "color": "text",   "value": 0 },
+                    { "color": "yellow", "value": 1 }
                   ]
                 }
               },
@@ -142,6 +159,14 @@
             ]
           },
           {
+            "matcher": { "id": "byName", "options": "Tempo mais antigo" },
+            "properties": [
+              { "id": "custom.width", "value": 140 },
+              { "id": "unit", "value": "dtdurations" },
+              { "id": "decimals", "value": 0 }
+            ]
+          },
+          {
             "matcher": { "id": "byName", "options": "Provedor" },
             "properties": [
               { "id": "custom.width", "value": 110 }
@@ -152,7 +177,7 @@
       "targets": [
         {
           "datasource": { "uid": "postgres-firmasolar" },
-          "rawSql": "SELECT u.nome AS \"Usina\", INITCAP(u.provedor) AS \"Provedor\", CASE MAX(CASE a.nivel WHEN 'critico' THEN 4 WHEN 'importante' THEN 3 WHEN 'aviso' THEN 2 ELSE 1 END) WHEN 4 THEN 'critico' WHEN 3 THEN 'importante' WHEN 2 THEN 'aviso' ELSE 'info' END AS \"Pior Nível\", COUNT(a.id)::int AS \"Total Alertas\", COUNT(CASE WHEN a.nivel = 'critico' THEN 1 END)::int AS \"Críticos\", COUNT(CASE WHEN a.estado = 'em_atendimento' THEN 1 END)::int AS \"Em Atendimento\", MIN(a.inicio) AS \"Desde\" FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id WHERE a.estado IN ('ativo','em_atendimento') GROUP BY u.id, u.nome, u.provedor ORDER BY MAX(CASE a.nivel WHEN 'critico' THEN 4 WHEN 'importante' THEN 3 WHEN 'aviso' THEN 2 ELSE 1 END) DESC, COUNT(a.id) DESC",
+          "rawSql": "SELECT u.nome AS \"Usina\", INITCAP(u.provedor) AS \"Provedor\", CASE MAX(CASE a.nivel WHEN 'critico' THEN 4 WHEN 'importante' THEN 3 WHEN 'aviso' THEN 2 ELSE 1 END) WHEN 4 THEN 'critico' WHEN 3 THEN 'importante' WHEN 2 THEN 'aviso' ELSE 'info' END AS \"Pior Nível\", COUNT(a.id)::int AS \"Total Alertas\", COUNT(CASE WHEN a.nivel = 'critico' THEN 1 END)::int AS \"Críticos\", COUNT(CASE WHEN a.nivel = 'importante' THEN 1 END)::int AS \"Importantes\", COUNT(CASE WHEN a.nivel = 'aviso' THEN 1 END)::int AS \"Avisos\", MIN(a.inicio) AS \"Desde\", EXTRACT(EPOCH FROM (NOW() - MIN(a.inicio)))::bigint AS \"Tempo mais antigo\" FROM alertas_alerta a JOIN usinas_usina u ON a.usina_id = u.id WHERE a.estado = 'ativo' AND u.ativo = true GROUP BY u.id, u.nome, u.provedor ORDER BY MAX(CASE a.nivel WHEN 'critico' THEN 4 WHEN 'importante' THEN 3 WHEN 'aviso' THEN 2 ELSE 1 END) DESC, COUNT(a.id) DESC",
           "format": "table",
           "refId": "A"
         }
