@@ -2,21 +2,28 @@
 title: Operacional — Monitoramento do Sistema
 tipo: operacional
 tags: [monitoramento, operacional, logs, saude]
+updated: 2026-04-15
 ---
 
 # Monitoramento do Sistema
 
 ---
 
-## Dashboard Principal
+## Dashboards
 
-Acesse **https://monitoramento.firmasolar.com.br** → painel **DEV / Infra**.
+**https://monitoramento.firmasolar.com.br**
 
-O que observar:
-- **Sem Coleta Recente**: deve estar em 0. Se > 0, algum provedor parou de coletar
-- **Erro de Autenticação**: deve estar em 0. Se > 0, credencial inválida
-- **Taxa de Sucesso (24h)**: deve estar acima de 90%
-- **Log de Erros Recentes**: indica a causa raiz dos problemas
+- **DEV / Infra** (`firma-solar-suporte`) — saúde do sistema (coletas, autenticação, erros).
+- **Monitoramento de Alertas** (`alertas-monitoramento`) — KPIs e lista de alertas abertos.
+- Detalhes: `detalhe-usina`, `usinas-afetadas`, `lista-alertas`.
+
+Ver [[grafana/dashboards]].
+
+O que observar no DEV / Infra:
+- **Sem Coleta Recente (> 20 min)**: deve estar em 0. Se > 0, algum provedor parou de coletar.
+- **Erro de Autenticação**: deve estar em 0. Se > 0, credencial inválida (`precisa_atencao=true`).
+- **Taxa de Sucesso (24h)**: deve estar acima de 90%.
+- **Log de Erros Recentes**: indica a causa raiz dos problemas.
 
 ---
 
@@ -80,9 +87,11 @@ from alertas.models import Alerta
 alertas = Alerta.objects.filter(estado='ativo').select_related('usina').order_by('-nivel', '-inicio')
 print(f'{alertas.count()} alerta(s) ativo(s)')
 for a in alertas[:10]:
-    print(f'  [{a.nivel}] {a.usina.nome} — {a.mensagem[:60]}')
+    print(f'  [{a.nivel}] [{a.origem}] {a.usina.nome} — {a.mensagem[:60]}')
 " 2>/dev/null
 ```
+
+> O estado `em_atendimento` foi removido — hoje o ciclo é apenas `ativo → resolvido` (ver [[modulos/alertas#Ciclo de vida]]). Use `origem` para distinguir alertas `provedor` de `interno`.
 
 ---
 

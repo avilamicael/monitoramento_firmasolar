@@ -2,11 +2,67 @@
 title: Grafana — Dashboards
 tipo: grafana
 tags: [grafana, dashboards, paineis]
+updated: 2026-04-15
 ---
 
 # Dashboards Grafana
 
 Todos os dashboards são provisionados automaticamente a partir de arquivos JSON em `frontend/grafana/dashboards/`. Alterações no JSON são aplicadas após restart do Grafana.
+
+Estrutura em disco:
+
+```
+frontend/grafana/dashboards/
+├── principal/
+│   ├── monitoramento_alertas.json       # UID: alertas-monitoramento
+│   └── suporte_tecnico.json             # UID: firma-solar-suporte
+└── detalhes/
+    ├── detalhe_lista_alertas.json       # UID: lista-alertas
+    ├── detalhe_usina.json               # UID: detalhe-usina
+    └── detalhe_usinas_afetadas.json     # UID: usinas-afetadas
+```
+
+> Todos os dashboards foram alinhados ao schema atual (2026-04-15):
+> - Removidas referências a `em_atendimento` (o estado não existe mais — ver [[modulos/alertas]]).
+> - Filtradas usinas `u.ativo = true` nas contagens.
+> - Usa `COALESCE(NULLIF(a.categoria, ''), ca.tipo, 'sem_categoria')` para categoria efetiva (espelha o `categoria_efetiva` da API).
+> - Colunas de duração formatadas com unidade `dtdurations`.
+> - KPIs do painel principal atualizados para refletir os 4 níveis: crítico, importante, aviso e info.
+
+---
+
+## Monitoramento de Alertas (`monitoramento_alertas.json`)
+
+**UID:** `alertas-monitoramento`
+**Foco:** Acompanhamento de alertas ativos pelo operador.
+
+### KPIs (primeira linha)
+
+| Painel | Query resumida |
+|---|---|
+| Alertas Abertos | `COUNT(*) WHERE estado='ativo' AND u.ativo=true` |
+| Críticos Ativos | `... AND nivel='critico'` |
+| Importantes Ativos | `... AND nivel='importante'` |
+| Avisos Ativos | `... AND nivel='aviso'` |
+| Usinas Afetadas | `COUNT(DISTINCT usina_id)` |
+| Resolvidos (últimas 24h) | `... WHERE estado='resolvido' AND fim > NOW() - INTERVAL '24h'` |
+
+Cada KPI tem link clicável para o dashboard `lista-alertas` pré-filtrado.
+
+### Distribuição de alertas abertos
+
+- **Por Categoria** — usa `COALESCE(NULLIF(a.categoria, ''), ca.tipo, 'sem_categoria')` para categoria efetiva. Aceita alertas internos (coluna `categoria`) e do provedor (fallback para `catalogo_alarme.tipo`).
+- **Por Nível de Severidade** — ordenado crítico → importante → aviso; `info` é excluído deste agrupamento.
+- **Por Provedor** — agrupa por `usina.provedor`.
+
+### Lista de alertas abertos
+
+Tabela detalhada com nível colorido, usina, categoria efetiva, tempo aberto (formato `dtdurations`) e link para a usina. Filtra `u.ativo=true`.
+
+### Histórico (últimos 30 dias)
+
+- Novos alertas por categoria/dia
+- Alertas criados vs resolvidos/dia
 
 ---
 
@@ -14,110 +70,65 @@ Todos os dashboards são provisionados automaticamente a partir de arquivos JSON
 
 **UID:** `firma-solar-suporte`
 **Refresh:** 30 segundos
-**Foco:** Saúde do sistema para o desenvolvedor/infraestrutura
-
-### Painéis
+**Foco:** Saúde do sistema para o desenvolvedor/infraestrutura.
 
 | Painel | Tipo | O que mostra |
 |---|---|---|
-| Provedores Ativos | Stat | Total de credenciais com `ativo=true` |
-| Sem Coleta Recente (>20 min) | Stat | Provedores sem sucesso nos últimos 20 min. Verde=0, Vermelho≥1 |
+| Provedores Ativos | Stat | Total de `CredencialProvedor` com `ativo=true` |
+| Sem Coleta Recente (> 20 min) | Stat | Verde=0, Vermelho≥1 |
 | Erro de Autenticação | Stat | Credenciais com `precisa_atencao=true` |
-| Taxa de Sucesso (24h) | Stat | % de coletas com `status='sucesso'` nas últimas 24h |
-| Erros nas Últimas 24h | Stat | Contagem de `erro` + `auth_erro` nas últimas 24h |
-| Última Coleta Bem-sucedida | Stat | Timestamp relativo ("há 3 minutos") |
-| Status por Provider | Table | Por provedor: credencial, min. desde últ. sucesso, sucessos, falhas, duração média |
-| Coletas no Tempo | Timeseries | Sucesso / Erro / Parcial agrupados a cada 15 min |
-| Duração das Coletas (ms) | Timeseries | Duração média por provedor ao longo do tempo |
-| Log de Erros Recentes | Table | Últimos 50 erros dos últimos 7 dias com mensagem completa |
-| Infraestrutura (row) | Row | Placeholder para métricas de VPS (CPU, memória, disco) |
+| Taxa de Sucesso (24h) | Stat | % de coletas com `status='sucesso'` |
+| Última Coleta Bem-sucedida | Stat | Tempo relativo |
+| Status por Provider | Table | Min. desde últ. sucesso, sucessos, falhas, duração média |
+| Coletas no Tempo — Sucesso vs Erros | Timeseries | Agrupado a cada 15 min |
+| Duração das Coletas (ms) | Timeseries | Média por provedor |
+| Log de Erros Recentes | Table | Últimos 50 erros dos últimos 7 dias |
+| Infraestrutura / VPS — Em breve | Row/placeholder | Futuras métricas de CPU/memória/disco |
 
 ---
 
-## Solar (`solar.json`)
+## Detalhes (linkados por UID)
 
-**UID:** `firma-solar-solar`
-**Foco:** Produção de energia das usinas
+### `detalhe-usina` (`detalhe_usina.json`)
 
-Painéis incluem:
-- Potência total atual (kW)
-- Energia gerada hoje (kWh)
-- Usinas online vs offline
-- Histórico de geração
-- Ranking de usinas por produção
+Ao clicar em uma usina (de qualquer lista), abre este dashboard com:
+- Provedor, Capacidade instalada, Status atual, Alertas abertos
+- Potência atual, Energia hoje
+- Potência gerada (kW) ao longo do tempo
+- Energia acumulada no dia (kWh)
+- Alertas da usina (tabela)
+- Inversores — status, estado ao longo do tempo
+- Análise de geração — geração diária e potência como % da capacidade instalada
 
----
+### `usinas-afetadas` (`detalhe_usinas_afetadas.json`)
 
-## Alertas (`alertas.json`)
+Lista de usinas com pelo menos um alerta aberto. Resumo por usina, link para `detalhe-usina`.
 
-**UID:** `firma-solar-alertas`
-**Foco:** Acompanhamento de alertas e problemas
+### `lista-alertas` (`detalhe_lista_alertas.json`)
 
-Painéis incluem:
-- Alertas ativos por nível (crítico, importante, aviso)
-- Histórico de alertas
-- Usinas com mais ocorrências
-
----
-
-## Conexões (`conexoes.json`)
-
-**UID:** `firma-solar-conexoes`
-**Foco:** Status de conectividade dos provedores
+Lista completa de alertas com filtro via `?var-filtro=critico|importante|aviso|...`. Usa `dtdurations` nas colunas de tempo aberto.
 
 ---
 
 ## Datasource
 
-Todos os dashboards usam o datasource `postgres-firmasolar` (PostgreSQL). Ver [[grafana/datasources]].
+Todos os dashboards usam o datasource `postgres-firmasolar` (PostgreSQL, acesso via rede Docker `firmasolar_obs`). Ver [[grafana/datasources]].
 
 ---
 
 ## Como Editar um Dashboard
 
-1. Edite o JSON em `frontend/grafana/dashboards/nome.json`
-2. Commit e push para o repositório
-3. Na VPS: `git pull` + `docker compose restart grafana`
+1. Edite o JSON em `frontend/grafana/dashboards/<pasta>/<nome>.json`.
+2. Commit e push para o repositório.
+3. Na VPS: `git pull` + `docker compose restart grafana`.
 
-Ou edite diretamente no Grafana e exporte o JSON (botão "Share" > "Export").
-
-**Atenção:** Edições feitas diretamente na interface do Grafana são **perdidas** ao reiniciar se não forem exportadas para o JSON.
-
----
-
-## Queries PostgreSQL Mais Usadas
-
-**Status atual por provedor:**
-```sql
-SELECT
-    c.provedor AS "Provider",
-    CASE WHEN c.precisa_atencao THEN 'atencao' ELSE 'ok' END AS "Credencial",
-    ROUND(EXTRACT(EPOCH FROM (NOW() - MAX(
-        CASE WHEN l.status = 'sucesso' THEN l.iniciado_em END
-    ))) / 60, 1) AS "Min. desde últ. sucesso",
-    COUNT(CASE WHEN l.status = 'sucesso'
-               AND l.iniciado_em > NOW() - INTERVAL '24 hours' THEN 1 END) AS "Sucessos 24h"
-FROM provedores_credencialprovedor c
-LEFT JOIN coleta_logcoleta l ON l.credencial_id = c.id
-WHERE c.ativo = true
-GROUP BY c.provedor, c.precisa_atencao;
-```
-
-**Timeline de coletas:**
-```sql
-SELECT
-    $__timeGroupAlias(l.iniciado_em, '15m'),
-    COUNT(CASE WHEN l.status = 'sucesso' THEN 1 END) AS "Sucesso",
-    COUNT(CASE WHEN l.status IN ('erro', 'auth_erro') THEN 1 END) AS "Erro"
-FROM coleta_logcoleta l
-WHERE $__timeFilter(l.iniciado_em)
-GROUP BY 1 ORDER BY 1;
-```
+**Atenção:** edições feitas diretamente na interface do Grafana são **perdidas** ao reiniciar se não forem exportadas para o JSON.
 
 ---
 
 ## Veja Também
 
 - [[grafana/datasources]]
-- [[modulos/coleta#Model: LogColeta]]
-- [[modulos/usinas#Queries Úteis]]
+- [[modulos/coleta]]
+- [[modulos/alertas]]
+- [[modulos/usinas]]

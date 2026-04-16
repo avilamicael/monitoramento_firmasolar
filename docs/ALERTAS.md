@@ -1,6 +1,15 @@
+---
+title: ALERTAS — Mapeamento e referência
+tipo: referencia
+tags: [alertas, provedores, referencia]
+updated: 2026-04-15
+---
+
 # Mapeamento de Alertas — Firma Solar
 
 > Documento de referência para entender os alertas recebidos dos provedores, como são salvos no banco e como priorizar os problemas.
+>
+> **Atualizado em 2026-04-15** — remoção do estado `em_atendimento`, inclusão de alertas internos (`origem='interno'`) e regra de garantia ativa. Ver [[modulos/alertas]] para a visão técnica completa.
 
 ---
 
@@ -132,7 +141,9 @@ ServicoNotificacao
 | `nivel` | string | `info`, `aviso`, `importante`, `critico` |
 | `inicio` | datetime | Quando o alerta começou |
 | `fim` | datetime (nullable) | Quando foi resolvido |
-| `estado` | string | `ativo`, `em_atendimento`, `resolvido` |
+| `estado` | string | `ativo`, `resolvido` (o estado `em_atendimento` foi removido em 2026-04-15) |
+| `origem` | string | `provedor` (veio da API) ou `interno` (gerado por `alertas/analise.py`) |
+| `categoria` | string | Para alertas internos: categoria específica (`tensao_zero`, `sobretensao`, `sem_geracao_diurna`, `sem_comunicacao`, `corrente_baixa`, `garantia_expirando`, etc) |
 | `sugestao` | text | Sugestão de reparo |
 | `anotacoes` | text | Anotações da equipe |
 | `notificacao_enviada` | bool | Se notificação já foi disparada |
@@ -316,28 +327,25 @@ Avisos de manutenção preventiva, atualizações ou condições não urgentes. 
 ## 6. Ciclo de Vida de um Alerta
 
 ```
-[Provedor retorna alerta]
+[Provedor retorna alerta]  OU  [analisar_usina() detecta condição interna]
        │
        ▼
    estado: ATIVO
-   task Celery agenda notificação (após commit da transação)
+   task Celery agenda notificação (após commit da transação) — email/WhatsApp/webhook + painel
        │
-       ├─── Equipe reconhece
+       ├─── Alerta some da API / condição interna desaparece
        │         ▼
-       │    estado: EM_ATENDIMENTO
-       │    (coleta nunca sobrescreve este estado)
+       │    estado: RESOLVIDO
+       │    fim: (timestamp automático)
        │
-       └─── Alerta some da API do provedor
+       └─── Operador marca resolvido via PATCH /api/alertas/{id}/
                  ▼
-            estado: RESOLVIDO  (somente se estava ATIVO)
-            fim: (timestamp automático)
-            ──────────────────────────────────────────
-            ⚠️  Se estava EM_ATENDIMENTO: NÃO é alterado
-               (ver item "Futuro — Resolução automática de em_atendimento")
+            estado: RESOLVIDO
 ```
 
-> **Reabertura:** Se um alerta resolvido reaparece na API do provedor,
-> o estado volta para `ativo` automaticamente.
+> **Reabertura:** Se um alerta resolvido reaparece, volta para `ativo` automaticamente (`fim` é limpo para não distorcer a duração).
+>
+> **Regra de garantia:** alertas com `origem='interno'` só são gerados para usinas com `garantia.ativa=True` (ver [[modulos/alertas#Regra de garantia]] e [[arquitetura/decisoes#ADR-011]]).
 
 ---
 

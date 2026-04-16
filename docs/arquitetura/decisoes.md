@@ -2,11 +2,14 @@
 title: Decisões de Arquitetura
 tipo: decisoes
 tags: [decisoes, arquitetura, adr]
+updated: 2026-04-15
 ---
 
 # Decisões de Arquitetura
 
 Registro de decisões técnicas não triviais tomadas no projeto. Formato: contexto → opções → decisão → motivo.
+
+Decisões adicionadas a partir de 2026-04-15 espelham o `DECISIONS.md` da raiz do repositório.
 
 ---
 
@@ -18,133 +21,182 @@ Registro de decisões técnicas não triviais tomadas no projeto. Formato: conte
 - Repositório único (monorepo)
 - Dois repositórios separados
 
-**Decisão:** Monorepo com pastas `backend_monitoramento/` e `frontend/`.
+**Decisão:** Monorepo com pastas `backend_monitoramento/`, `frontend/admin/` (SPA) e `frontend/grafana/` (dashboards).
 
-**Motivo:** A equipe é pequena (um desenvolvedor), os componentes são codependentes (Grafana lê o mesmo banco que o Django escreve) e o deploy é feito na mesma VPS. Um monorepo simplifica o versionamento e a referência cruzada entre componentes.
+**Motivo:** A equipe é pequena, os componentes são codependentes (Grafana lê o mesmo banco que o Django escreve) e o deploy é feito na mesma VPS. Um monorepo simplifica o versionamento e a referência cruzada entre componentes.
 
 ---
 
-## ADR-002 — Grafana como camada de visualização (sem API REST própria)
+## ADR-002 — Grafana como camada de visualização operacional
 
-**Contexto:** Precisávamos de dashboards operacionais. Opções incluíam construir uma SPA própria com API Django REST.
+**Contexto:** Precisávamos de dashboards operacionais para monitoramento técnico.
 
-**Opções:**
-- SPA React + API Django REST Framework
-- Grafana com datasource PostgreSQL direto
-- Metabase
+**Decisão:** Grafana 10.4 com datasource PostgreSQL direto (rede Docker compartilhada `firmasolar_obs`). Para o painel do cliente/operador, existe uma SPA React/Vite/shadcn separada (ver [[Frontend - Painel Administrativo]]).
 
-**Decisão:** Grafana 10.4 com datasource PostgreSQL direto.
-
-**Motivo:** Para monitoramento operacional (não produto para cliente final), Grafana entrega 95% do valor com 5% do esforço. Sem necessidade de manter API REST, autenticação de usuário final ou frontend. O Grafana acessa o PostgreSQL diretamente via rede Docker compartilhada (`firmasolar_obs`), eliminando um intermediário desnecessário.
+**Motivo:** Grafana entrega 95% do valor com 5% do esforço para dashboards técnicos; a SPA React cobre fluxos de operação (alertas, usinas, gestão de provedores, notificações, garantias) que não encaixam bem em Grafana.
 
 ---
 
 ## ADR-003 — Criptografia Fernet para credenciais no banco
 
-**Contexto:** As credenciais de API dos provedores (API keys, senhas, tokens) precisam ser armazenadas de forma segura no banco PostgreSQL.
+**Decisão:** Fernet (`cryptography`) com chave no `.env` (`CHAVE_CRIPTOGRAFIA`). Protege credenciais de provedores e tokens de sessão no `CacheTokenProvedor`.
 
-**Opções:**
-- Armazenar em plaintext (inaceitável)
-- Armazenar apenas em variáveis de ambiente (impossível para múltiplos provedores dinâmicos)
-- Criptografia simétrica (Fernet/AES)
-- Criptografia assimétrica (RSA)
-
-**Decisão:** Fernet (da lib `cryptography`) com chave no `.env`.
-
-**Motivo:** Fernet garante criptografia autenticada (AES-128-CBC + HMAC-SHA256). A chave fica apenas no `.env` (não no banco e não no repositório). Criptografia assimétrica seria desnecessariamente complexa para este caso — não há cenário onde encriptamos com uma chave e decriptamos com outra.
-
-**Risco:** Se a `CHAVE_CRIPTOGRAFIA` for perdida, todas as credenciais armazenadas se tornam ilegíveis. Backup da chave é obrigatório.
+**Risco:** Se a chave for perdida, credenciais se tornam ilegíveis — backup é obrigatório.
 
 ---
 
 ## ADR-004 — Snapshots append-only com janela de 10 minutos
 
-**Contexto:** Cada coleta gera dados de potência, energia e status de cada usina. Precisávamos decidir como armazenar o histórico.
-
-**Opções:**
-- Atualizar um único registro por usina (sem histórico)
-- Inserir um snapshot a cada coleta (histórico completo)
-- Time-series database (InfluxDB, TimescaleDB)
-
-**Decisão:** Snapshots append-only no PostgreSQL, com `coletado_em` arredondado para janelas de 10 minutos.
-
-**Motivo:** Histórico é essencial para análise de performance. PostgreSQL é suficiente para o volume atual (~130 usinas × 6 coletas/hora × 24h = ~18.000 registros/dia). O arredondamento para 10 min garante idempotência em retries sem criar duplicatas. Limpeza automática remove snapshots com mais de 90 dias via task diária.
+**Decisão:** Snapshots no PostgreSQL com `coletado_em` arredondado para janelas de 10 min. `get_or_create` garante idempotência em retries. Limpeza diária remove dados com > 90 dias.
 
 ---
 
 ## ADR-005 — Rate limiting distribuído via Redis
 
-**Contexto:** Múltiplos workers Celery rodando em paralelo podem exceder os rate limits das APIs dos provedores se cada worker não "ver" as requisições dos outros.
-
-**Opções:**
-- Rate limiting por processo (sem compartilhamento)
-- Rate limiting via banco de dados
-- Rate limiting via Redis
-
-**Decisão:** Redis com contador por janela deslizante.
-
-**Motivo:** Redis é já parte da infraestrutura (broker do Celery). Operações atômicas garantem consistência entre workers sem locks de banco. Latência sub-milissegundo.
+**Decisão:** Redis com contador por janela deslizante. Operações atômicas garantem consistência entre workers sem locks de banco.
 
 ---
 
 ## ADR-006 — FusionSolar: intervalo mínimo de 900 segundos
 
-**Contexto:** A API da Huawei FusionSolar retorna `failCode=407` (ACCESS_FREQUENCY_IS_TOO_HIGH) quando consultada com muita frequência. Inicialmente configuramos 2100s (35 min) por evidência empírica com um usuário compartilhado.
+**Decisão:** `min_intervalo_coleta_segundos=900` (15 min) com usuário dedicado `api_firmasolar`. Se o rate limit voltar, aumentar para 1800s.
 
-**Decisão:** Reduzido para 900s (15 min) com a criação do usuário dedicado `api_firmasolar`.
-
-**Motivo:** A documentação oficial da Huawei especifica query interval de 15 minutos. O problema anterior era o usuário compartilhado (múltiplas integrações consumindo a mesma cota). Com usuário dedicado (1 API por usuário, recomendado pela Huawei), 15 min é suficiente.
-
-**Observação:** O Celery Beat roda a cada 10 min. Com `min_intervalo_coleta_segundos=900`, a coleta do FusionSolar ocorre efetivamente a cada ~20 min (dois ciclos do Beat). Se o rate limit voltar, aumentar para 1800s.
+> Com a adoção do Beat a cada 30 min em ADR-011, a coleta do FusionSolar fica naturalmente espaçada — o `min_intervalo` continua protegendo contra eventuais forcar-coleta manuais.
 
 ---
 
 ## ADR-007 — WhiteNoise para arquivos estáticos
 
-**Contexto:** Em produção com `DEBUG=False`, Django não serve arquivos estáticos. Precisávamos de uma solução para o Django Admin funcionar.
-
-**Opções:**
-- Configurar nginx para servir `/static/` direto do filesystem
-- WhiteNoise (middleware que serve via Gunicorn)
-- CDN externo (S3, CloudFront)
-
-**Decisão:** WhiteNoise com `CompressedManifestStaticFilesStorage`.
-
-**Motivo:** Para o escopo atual (apenas Django Admin acessado via SSH tunnel), a complexidade de configurar nginx para servir arquivos do container é desnecessária. WhiteNoise é zero-config, adiciona compressão gzip/brotli e cache busting via hash no nome do arquivo. CDN seria prematuro para este MVP.
+**Decisão:** WhiteNoise com `CompressedManifestStaticFilesStorage`. Zero-config, compressão gzip/brotli, cache busting.
 
 ---
 
-## ADR-008 — Django Admin como interface de configuração (sem frontend próprio)
+## ADR-008 — Django Admin + SPA React coexistindo
 
-**Contexto:** É necessário gerenciar credenciais de provedores, catálogo de alarmes, supressões e configurações de notificação.
+**Contexto:** Originalmente o Django Admin era a única interface. Com o crescimento do produto e a necessidade de fluxos com mais UX (gestão de provedores, notificações, garantias, configurações), foi criada a SPA React.
 
-**Opções:**
-- Construir frontend React + API REST
-- Usar o Django Admin (personalizado)
-
-**Decisão:** Django Admin com customizações específicas.
-
-**Motivo:** O Django Admin é poderoso o suficiente para gerenciamento interno. A segurança é garantida pela exposição exclusiva via SSH tunnel (não está no nginx público). Construir um frontend separado seria trabalho de semanas sem valor adicional para o MVP.
+**Decisão:** Django Admin continua disponível via SSH tunnel (configurações de baixo nível, catálogo de alarmes, supressões), e a SPA React em `frontend/admin/` atende as operações do dia a dia via API REST (DRF + SimpleJWT).
 
 ---
 
 ## ADR-009 — Alertas com catálogo e supressão granular
 
-**Contexto:** Provedores enviam dezenas de tipos diferentes de alarme. Alguns são ruidosos (alertas que aparecem constantemente mas não são acionáveis), outros são críticos.
+**Decisão:** Três camadas:
+1. `CatalogoAlarme` — define nível padrão e permite sobrescrever por operador (`nivel_sobrescrito`).
+2. `RegraSupressao` — suprime globalmente ou por usina, com expiração opcional.
+3. `Alerta` — ocorrência vinculada ao catálogo (ou a `origem='interno'`).
 
-**Decisão:** Sistema de três camadas:
-1. `CatalogoAlarme` — define nível padrão e permite sobrescrever por operador
-2. `RegraSupressao` — suprime um tipo de alarme globalmente ou por usina específica, com expiração opcional
-3. `Alerta` — ocorrência vinculada ao catálogo
-
-**Motivo:** Sem catálogo, o operador receberia spam de alertas não acionáveis. A supressão com expiração permite suprimir temporariamente durante manutenção. A granularidade por usina permite tratar casos especiais sem afetar toda a carteira.
+Complementada pela **supressão inteligente** (`supressao_inteligente.py`) para `sistema_desligado` durante pôr do sol normal.
 
 ---
 
-## ADR-010 — Notificações sem restart (ConfiguracaoNotificacao no banco)
+## ADR-010 — Notificações sem restart (canal + painel)
 
-**Contexto:** As configurações de email e WhatsApp (destinatários, níveis a notificar) precisam ser alteráveis sem redeploy.
+**Decisão:** `ConfiguracaoNotificacao` no banco (3 canais: email, WhatsApp, webhook) + modelos `Notificacao` e `NotificacaoLeitura` para o painel interno. Configurável em tempo de execução sem redeploy. Ver [[modulos/notificacoes]].
 
-**Decisão:** `ConfiguracaoNotificacao` no banco, lida em tempo de execução a cada notificação.
+---
 
-**Motivo:** Alterações em variáveis de ambiente exigem restart dos containers. Para um sistema de alertas, o operador precisa conseguir adicionar um destinatário às 2h da manhã sem redeploy. O overhead de uma query extra a cada notificação é desprezível.
+## ADR-011 — Alertas internos restritos a usinas com garantia ativa
+
+**Data:** 2026-04-15.
+
+**Contexto:** Em produção, o sistema monitora 131 usinas, incluindo várias sem comunicação há 15–580 dias. Isso gerava alertas ruidosos de "sem comunicação" e "sem geração" para usinas que o cliente final abandonou ou nunca contratou serviço de monitoramento.
+
+**Opções consideradas**
+- (A) Filtrar na coleta — não coletar usinas sem garantia. **Perde histórico** se a garantia for renovada.
+- (B) Filtrar apenas na geração de alertas internos — continua coletando, dashboard tem os dados, alertas só para quem paga.
+- (C) Flag explícita por usina, independente de garantia.
+
+**Decisão:** Opção **B**. `alertas/analise.py:_tem_garantia_ativa()` é o gatekeeper — usinas sem garantia ou com garantia expirada continuam populando `SnapshotUsina` e `SnapshotInversor`, mas não produzem `Alerta` interno.
+
+**Por quê:** Separa **coleta de dados** (todas) de **alertamento operacional** (apenas garantia ativa). Permite dashboard "com garantia vs sem garantia" sem nova migração.
+
+---
+
+## ADR-012 — Auto-criação de garantia de 12 meses na primeira coleta
+
+**Data:** 2026-04-15.
+
+**Decisão:** `ServicoIngestao.upsert_usina()` cria `GarantiaUsina(data_inicio=hoje, meses=config.meses_garantia_padrao)` quando a `Usina` é criada pela primeira vez. `get_or_create` é idempotente — não sobrescreve garantia pré-existente.
+
+**Por quê:**
+- A coleta é o único ponto onde usinas nascem no sistema — hook ali garante cobertura 100%.
+- `data_inicio = hoje` é a interpretação correta: 12 meses a partir de quando **começamos a monitorar**.
+- `meses_garantia_padrao` configurável evita hardcode de regra de negócio.
+
+---
+
+## ADR-013 — Auto-pausa de usinas sem comunicação
+
+**Data:** 2026-04-15.
+
+**Contexto:** Usinas que param de comunicar (Wi-Fi caído, datalogger desligado) continuavam gerando tentativas de coleta, ruído de alertas e consumo de quota de API dos provedores.
+
+**Decisão:** Antes de cada ciclo, `_pausar_usinas_inativas()` marca `ativo=False` em toda usina cujo `ultimo_snapshot.coletado_em` seja mais antigo que `ConfiguracaoSistema.dias_sem_comunicacao_pausar` (default 60 dias). No loop principal, usinas com `ativo=False` são puladas.
+
+**Por quê:**
+- Reativação é **manual** — usuário decide caso a caso (evita ping-pong automático). Hoje isso pode ser feito pelo frontend (`AtivoToggleButton`) ou pelo admin.
+- Valor **configurável** — operador ajusta conforme a realidade da carteira.
+- Checagem por ciclo (não job separado) — sem infra adicional.
+
+---
+
+## ADR-014 — Alerta de garantia próxima do fim
+
+**Data:** 2026-04-15.
+
+**Decisão:** Alerta interno `garantia_expirando`, gerado por `_verificar_garantia_expirando()` a cada ciclo de coleta. Dois patamares configuráveis em `ConfiguracaoSistema`:
+
+- `dias_aviso_garantia_proxima` (default 30) — nível "aviso"
+- `dias_aviso_garantia_urgente` (default 7) — nível "importante"
+
+Auto-resolve quando garantia é renovada (dias > 30) ou usina perde garantia (filtro principal).
+
+---
+
+## ADR-015 — ConfiguracaoSistema como singleton no app `coleta`
+
+**Data:** 2026-04-15.
+
+**Decisão:** Modelo `ConfiguracaoSistema` dentro de `coleta/models.py` — padrão singleton (`pk=1` forçado no `save()`, `delete()` desabilitado, acessor `obter()`).
+
+**Por quê:**
+- Os parâmetros atuais (dias sem comunicação, meses de garantia, dias de aviso de garantia) estão diretamente ligados à coleta.
+- Criar um app `core` novo por uma única tabela é overengineering — se o escopo crescer, migramos depois.
+- Singleton com `obter()` + permissões gated no admin evita múltiplas linhas.
+
+---
+
+## ADR-016 — Sessão JWT "Gmail-style" (access 12h, refresh 90d com rotação)
+
+**Data:** 2026-04-15.
+
+**Contexto:** Os defaults do SimpleJWT (access de 5 min, refresh de 1 dia) forçavam login várias vezes por dia. Para um painel interno usado por poucos operadores, isso era atrito sem ganho real de segurança.
+
+**Decisão:** `SIMPLE_JWT = { 'ACCESS_TOKEN_LIFETIME': 12h, 'REFRESH_TOKEN_LIFETIME': 90d, 'ROTATE_REFRESH_TOKENS': True, 'BLACKLIST_AFTER_ROTATION': True }`.
+
+**Por quê:**
+- Access de 12h cobre o dia de trabalho sem refresh.
+- Refresh de 90d + rotação mantém sessão ativa indefinidamente enquanto o operador usar pelo menos 1x a cada 90 dias.
+- Blacklist de refresh rotacionado protege contra reuso de token antigo.
+- Endpoint `/api/auth/me/` retorna o perfil do usuário a cada carga, fornecendo `is_staff` confiável para decisões de UI.
+
+---
+
+## ADR-017 — Canal webhook para integrações externas
+
+**Data:** 2026-04-15.
+
+**Decisão:** Adicionado backend `notificacoes/backends/webhook.py` e expandido `ConfiguracaoNotificacao.CANAL_CHOICES` para incluir `'webhook'`. Faz POST JSON para cada URL nos destinatários, timeout de 10s, `is_disponivel()` sempre True (não exige env vars).
+
+**Por quê:** Permite integrar facilmente com Slack/Discord (incoming webhooks), n8n, Zapier, ou endpoints internos — sem código novo para cada integração.
+
+---
+
+## ADR-018 — Ordenação de alertas por severidade
+
+**Data:** 2026-04-15.
+
+**Decisão:** `AlertaViewSet.get_queryset()` ordena por severidade primeiro, depois por `-inicio`, via `Case/When` na anotação `nivel_ordem` (crítico=0, importante=1, aviso=2, info=3). O frontend exibe data + hora juntas na coluna "Data".
+
+**Por quê:** O operador sempre vê os alertas mais críticos primeiro, independentemente de ordenação cronológica.

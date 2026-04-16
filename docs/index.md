@@ -23,11 +23,15 @@ Sistema de monitoramento em tempo real de usinas solares distribuídas. Coleta d
 - [[provedores/solis]] — Solis Cloud (12 usinas)
 
 ### Módulos do Sistema
-- [[modulos/coleta]] — Tasks Celery, ingestão, rate limiting
-- [[modulos/alertas]] — Catálogo, supressão, estados
-- [[modulos/notificacoes]] — Email e WhatsApp
-- [[modulos/usinas]] — Models de usinas e inversores
+- [[modulos/coleta]] — Tasks Celery, ingestão, configuração, auto-pausa
+- [[modulos/alertas]] — Catálogo, supressão, alertas internos, garantia
+- [[modulos/notificacoes]] — Email, WhatsApp, webhook e painel
+- [[modulos/usinas]] — Usinas, inversores, garantia
 - [[modulos/provedores]] — Credenciais, criptografia, registro
+
+### Frontend
+- [[Frontend - Painel Administrativo]] — SPA React/Vite, rotas, integração com API
+- [[ALERTAS]] — Referência de alertas (provedores + internos)
 
 ### Infraestrutura
 - [[infraestrutura/docker]] — Docker Compose, imagens, rede
