@@ -27,6 +27,7 @@ const navGroups: NavGroup[] = [
       { title: 'Dashboard', url: '/' },
       { title: 'Usinas', url: '/usinas' },
       { title: 'Alertas', url: '/alertas' },
+      { title: 'Grafana', url: '/grafana/', external: true },
     ],
   },
   {

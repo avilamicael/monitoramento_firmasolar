@@ -18,7 +18,8 @@ services:
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/principal/monitoramento_alertas.json
       # Viewer não pode editar nem criar dashboards
       - GF_USERS_DEFAULT_THEME=dark
-      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       # Formato de datas em DD/MM/YYYY (padrão brasileiro)
       - GF_DATE_FORMATS_FULL_DATE=DD/MM/YYYY HH:mm:ss
       - GF_DATE_FORMATS_INTERVAL_SECOND=HH:mm:ss

@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router'
-import { ChevronRightIcon, type LucideIcon } from 'lucide-react'
+import { ChevronRightIcon, ExternalLinkIcon, type LucideIcon } from 'lucide-react'
 import {
   Collapsible,
   CollapsibleContent,
@@ -22,6 +22,7 @@ export interface NavGroup {
   items: {
     title: string
     url: string
+    external?: boolean
   }[]
 }
 
@@ -59,9 +60,16 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
                   {group.items.map((item) => (
                     <SidebarMenuSubItem key={item.title}>
                       <SidebarMenuSubButton asChild>
-                        <NavLink to={item.url} end={item.url === '/'}>
-                          <span>{item.title}</span>
-                        </NavLink>
+                        {item.external ? (
+                          <a href={item.url} target="_blank" rel="noopener noreferrer">
+                            <span>{item.title}</span>
+                            <ExternalLinkIcon className="ml-auto size-3 opacity-50" />
+                          </a>
+                        ) : (
+                          <NavLink to={item.url} end={item.url === '/'}>
+                            <span>{item.title}</span>
+                          </NavLink>
+                        )}
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   ))}
