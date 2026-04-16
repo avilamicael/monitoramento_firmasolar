@@ -29,11 +29,15 @@ api.interceptors.response.use(
         if (data.refresh) {
           localStorage.setItem('refresh_token', data.refresh)
         }
+        // Atualiza cookie do Grafana com o novo access token
+        const maxAge = 12 * 3600
+        document.cookie = `fs_access_token=${data.access}; path=/grafana; secure; samesite=strict; max-age=${maxAge}`
         original.headers.Authorization = `Bearer ${data.access}`
         return api(original)
       } catch {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
+        document.cookie = 'fs_access_token=; path=/grafana; max-age=0'
         window.location.href = '/login'
       }
     }

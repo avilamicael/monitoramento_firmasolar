@@ -22,6 +22,17 @@ interface AuthContextValue extends AuthState {
 // eslint-disable-next-line react-refresh/only-export-components
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+// Cookie usado pelo nginx para validar acesso ao Grafana (auth_request).
+// Path=/grafana limita o envio apenas para requests ao Grafana.
+function setGrafanaCookie(token: string) {
+  const maxAge = 12 * 3600 // mesma duração do access token
+  document.cookie = `fs_access_token=${token}; path=/grafana; secure; samesite=strict; max-age=${maxAge}`
+}
+
+function clearGrafanaCookie() {
+  document.cookie = 'fs_access_token=; path=/grafana; max-age=0'
+}
+
 function isTokenValid(token: string): boolean {
   try {
     const { exp } = jwtDecode<{ exp: number }>(token)
@@ -62,9 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem('access_token')
     if (!token || !isTokenValid(token)) {
+      clearGrafanaCookie()
       setState({ user: null, isAuthenticated: false, isLoading: false })
       return
     }
+    setGrafanaCookie(token)
 
     // Token válido — marca como autenticado e busca perfil em paralelo.
     // Perfil vem do backend para ter email/nome/is_staff confiáveis.
@@ -86,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await api.post('/api/auth/token/', { username: email, password })
     localStorage.setItem('access_token', data.access)
     localStorage.setItem('refresh_token', data.refresh)
+    setGrafanaCookie(data.access)
 
     const user = await buscarPerfil()
     setState({
@@ -98,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function logout() {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
+    clearGrafanaCookie()
     setState({ user: null, isAuthenticated: false, isLoading: false })
   }
 

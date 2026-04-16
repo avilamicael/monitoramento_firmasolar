@@ -7,7 +7,7 @@ from .views.usinas import UsinaViewSet
 from .views.garantias import GarantiaListView
 from .views.inversores import InversorViewSet
 from .views.alertas import AlertaViewSet
-from .views.auth import MeView
+from .views.auth import MeView, GrafanaVerifyView
 from .views.configuracoes import ConfiguracaoSistemaView
 from .views.provedores import CredencialProvedorViewSet, ProvedoresMetaView
 from .views.notificacoes import NotificacaoViewSet
@@ -31,6 +31,7 @@ urlpatterns = [
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/me/', MeView.as_view(), name='auth_me'),
+    path('auth/grafana-verify/', GrafanaVerifyView.as_view(), name='grafana_verify'),
     path('ping/', PingView.as_view(), name='api_ping'),
     path('garantias/', GarantiaListView.as_view(), name='garantia-list'),
     path('coleta/logs/', LogColetaListView.as_view(), name='log-coleta-list'),
