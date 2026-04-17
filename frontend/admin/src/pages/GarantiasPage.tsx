@@ -50,7 +50,45 @@ export function GarantiasPage() {
   const [page, setPage] = useState(1)
   const [formTarget, setFormTarget] = useState<FormTarget | null>(null)
   const [garantias, setGarantias] = useState<Map<string, GarantiaUsina>>(new Map())
-  const [loadingGarantias, setLoadingGarantias] = useState(false)
+  const [loadingGarantias, setLoadingGarantias] = useState(true)
+
+  // Buscar TODAS as garantias uma vez ao carregar a página
+  useEffect(() => {
+    const fetchAllGarantias = async () => {
+      setLoadingGarantias(true)
+      const allGarantias = new Map<string, GarantiaUsina>()
+      let currentPage = 1
+      let hasMore = true
+
+      try {
+        // Buscar todas as páginas de garantias
+        while (hasMore) {
+          const response = await api.get('/api/garantias/', {
+            params: { page: currentPage, page_size: 50 }
+          })
+
+          if (response.data?.results) {
+            for (const garantia of response.data.results) {
+              allGarantias.set(garantia.usina_id, garantia)
+            }
+
+            // Verificar se há mais páginas
+            hasMore = response.data.next !== null
+            currentPage++
+          } else {
+            hasMore = false
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar garantias:', error)
+      }
+
+      setGarantias(allGarantias)
+      setLoadingGarantias(false)
+    }
+
+    void fetchAllGarantias()
+  }, []) // Executar apenas uma vez ao montar o componente
 
   // Debounce para a busca
   useEffect(() => {
@@ -69,49 +107,6 @@ export function GarantiasPage() {
     nome: searchTerm || undefined,
     page,
   })
-
-  // Buscar garantias para as usinas exibidas
-  useEffect(() => {
-    const fetchGarantias = async () => {
-      if (!usinasData?.results || usinasData.results.length === 0) {
-        setGarantias(new Map())
-        return
-      }
-
-      setLoadingGarantias(true)
-      const newGarantias = new Map<string, GarantiaUsina>()
-
-      try {
-        // Buscar garantias de todas as usinas da página atual
-        // Fazemos requisições paralelas para melhor performance
-        const promises = usinasData.results
-          .filter(u => u.status_garantia !== 'sem_garantia')
-          .map(async (usina) => {
-            try {
-              const response = await api.get(`/api/usinas/${usina.id}/`)
-              return { usinaId: usina.id, garantia: response.data.garantia }
-            } catch {
-              return { usinaId: usina.id, garantia: null }
-            }
-          })
-
-        const results = await Promise.all(promises)
-
-        for (const { usinaId, garantia } of results) {
-          if (garantia) {
-            newGarantias.set(usinaId, garantia)
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao buscar garantias:', error)
-      }
-
-      setGarantias(newGarantias)
-      setLoadingGarantias(false)
-    }
-
-    void fetchGarantias()
-  }, [usinasData])
 
   const totalPages = Math.ceil((usinasData?.count ?? 0) / 20)
 
@@ -139,8 +134,38 @@ export function GarantiasPage() {
     setPage(1)
   }
 
-  function handleSuccess() {
+  async function handleSuccess() {
     setFormTarget(null)
+
+    // Recarregar garantias
+    setLoadingGarantias(true)
+    const allGarantias = new Map<string, GarantiaUsina>()
+    let currentPage = 1
+    let hasMore = true
+
+    try {
+      while (hasMore) {
+        const response = await api.get('/api/garantias/', {
+          params: { page: currentPage, page_size: 50 }
+        })
+
+        if (response.data?.results) {
+          for (const garantia of response.data.results) {
+            allGarantias.set(garantia.usina_id, garantia)
+          }
+          hasMore = response.data.next !== null
+          currentPage++
+        } else {
+          hasMore = false
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao recarregar garantias:', error)
+    }
+
+    setGarantias(allGarantias)
+    setLoadingGarantias(false)
+
     void refetchUsinas()
   }
 
