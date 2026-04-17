@@ -70,14 +70,26 @@ class UsinaViewSet(viewsets.ModelViewSet):
         serializer = SnapshotUsinaSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
-    @action(detail=True, methods=['put'], url_path='garantia')
+    @action(detail=True, methods=['put', 'delete'], url_path='garantia')
     def garantia(self, request, pk=None):
         """
-        GAR-02: Upsert de garantia da usina via PUT.
-        Cria ou substitui a garantia existente (OneToOne garante unicidade).
+        GAR-02: Gerenciar garantia da usina.
+        PUT: Cria ou substitui a garantia existente (OneToOne garante unicidade).
+        DELETE: Remove a garantia da usina.
         Retorna imediatamente data_fim e dias_restantes calculados (GAR-04).
         """
         usina = self.get_object()
+
+        if request.method == 'DELETE':
+            # Remover garantia se existir
+            try:
+                garantia = GarantiaUsina.objects.get(usina=usina)
+                garantia.delete()
+                return Response({'detail': 'Garantia removida com sucesso'}, status=status.HTTP_204_NO_CONTENT)
+            except GarantiaUsina.DoesNotExist:
+                return Response({'detail': 'Usina não possui garantia'}, status=status.HTTP_404_NOT_FOUND)
+
+        # PUT - criar ou atualizar garantia
         serializer = GarantiaUsinaEscritaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         garantia, _ = GarantiaUsina.objects.update_or_create(
