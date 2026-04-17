@@ -28,7 +28,8 @@ class UsinaViewSet(viewsets.ModelViewSet):
 
     # POST e DELETE retornam 405 (T-2-05)
     # PUT e permitido apenas para a action 'garantia' — nao para o recurso principal
-    http_method_names = ['get', 'patch', 'put', 'head', 'options']
+    # DELETE e permitido apenas para a action 'garantia' — para remover garantias
+    http_method_names = ['get', 'patch', 'put', 'delete', 'head', 'options']
     filterset_class = UsinaFilterSet
 
     def get_queryset(self):
@@ -52,6 +53,13 @@ class UsinaViewSet(viewsets.ModelViewSet):
         if not kwargs.get('partial', False):
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
         return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Bloqueia DELETE /api/usinas/{id}/ — usinas nao sao deletadas via API.
+        DELETE e permitido apenas na action 'garantia' para remover garantias.
+        """
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def get_serializer_class(self):
         if self.action == 'list':
