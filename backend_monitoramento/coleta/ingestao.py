@@ -179,6 +179,14 @@ class ServicoIngestao:
             if dados.estado == 'resolvido':
                 continue
 
+            # Só gera/reabre alertas do provedor para usinas com garantia ativa.
+            # Usinas sem garantia continuam sendo coletadas (dados viram métrica)
+            # mas não produzem alertas — mesmo comportamento de alertas internos
+            # (alertas/analise.py::_tem_garantia_ativa).
+            garantia = getattr(usina, 'garantia', None)
+            if garantia is None or not garantia.ativa:
+                continue
+
             # Lookup ou auto-criação no catálogo (apenas se o provedor envia um ID de tipo)
             catalogo = None
             nivel_efetivo = dados.nivel
