@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Loader2Icon, PlusIcon, PencilIcon } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Loader2Icon, PlusIcon, PencilIcon, SearchIcon } from 'lucide-react'
 import { useUsinas } from '@/hooks/use-usinas'
 import { useGarantias } from '@/hooks/use-garantias'
 import { GarantiaFormDialog } from '@/components/garantias/GarantiaFormDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -42,12 +43,28 @@ function formatarData(dataStr: string): string {
 
 export function GarantiasPage() {
   const [statusFilter, setStatusFilter] = useState('')
+  const [provedorFilter, setProvedorFilter] = useState('')
+  const [ativoFilter, setAtivoFilter] = useState<'all' | 'true' | 'false'>('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchInput, setSearchInput] = useState('')
   const [page, setPage] = useState(1)
   const [formTarget, setFormTarget] = useState<FormTarget | null>(null)
 
-  // Buscar usinas filtradas por status_garantia
+  // Debounce para a busca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(searchInput)
+      setPage(1) // Reset para primeira página quando buscar
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  // Buscar usinas filtradas
   const { data: usinasData, loading: usinasLoading, error: usinasError, refetch: refetchUsinas } = useUsinas({
     status_garantia: (statusFilter as StatusGarantia) || undefined,
+    provedor: provedorFilter || undefined,
+    ativo: ativoFilter === 'all' ? undefined : ativoFilter === 'true',
+    nome: searchTerm || undefined,
     page,
   })
 
@@ -64,8 +81,27 @@ export function GarantiasPage() {
 
   const totalPages = Math.ceil((usinasData?.count ?? 0) / 20)
 
-  function handleFilterChange(value: string) {
+  function handleStatusFilterChange(value: string) {
     setStatusFilter(value === 'all' ? '' : value)
+    setPage(1)
+  }
+
+  function handleProvedorFilterChange(value: string) {
+    setProvedorFilter(value === 'all' ? '' : value)
+    setPage(1)
+  }
+
+  function handleAtivoFilterChange(value: string) {
+    setAtivoFilter(value as 'all' | 'true' | 'false')
+    setPage(1)
+  }
+
+  function handleClearFilters() {
+    setStatusFilter('')
+    setProvedorFilter('')
+    setAtivoFilter('all')
+    setSearchInput('')
+    setSearchTerm('')
     setPage(1)
   }
 
@@ -81,19 +117,72 @@ export function GarantiasPage() {
         <h1 className="text-2xl font-bold">Gestão de Garantias</h1>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* Barra de busca */}
+      <div className="relative">
+        <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Buscar usinas por nome..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm text-muted-foreground">Filtrar por:</span>
-        <Select value={statusFilter || 'all'} onValueChange={handleFilterChange}>
+
+        {/* Filtro de Status da Garantia */}
+        <Select value={statusFilter || 'all'} onValueChange={handleStatusFilterChange}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="Todas as usinas" />
+            <SelectValue placeholder="Status da Garantia" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas as usinas</SelectItem>
+            <SelectItem value="all">Todos os Status</SelectItem>
             <SelectItem value="ativa">Com garantia ativa</SelectItem>
             <SelectItem value="vencida">Garantia vencida</SelectItem>
             <SelectItem value="sem_garantia">Sem garantia</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Filtro de Provedor */}
+        <Select value={provedorFilter || 'all'} onValueChange={handleProvedorFilterChange}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Provedor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Provedores</SelectItem>
+            <SelectItem value="solis">Solis</SelectItem>
+            <SelectItem value="hoymiles">Hoymiles</SelectItem>
+            <SelectItem value="fusionsolar">FusionSolar</SelectItem>
+            <SelectItem value="auxsol">AuxSol</SelectItem>
+            <SelectItem value="solarman">Solarman</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Filtro de Status Ativo */}
+        <Select value={ativoFilter} onValueChange={handleAtivoFilterChange}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as Usinas</SelectItem>
+            <SelectItem value="true">Usinas Ativas</SelectItem>
+            <SelectItem value="false">Usinas Inativas</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Botão Limpar Filtros */}
+        {(statusFilter || provedorFilter || ativoFilter !== 'all' || searchInput) && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearFilters}
+          >
+            Limpar Filtros
+          </Button>
+        )}
       </div>
 
       {usinasLoading ? (
