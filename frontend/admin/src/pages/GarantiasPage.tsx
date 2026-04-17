@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Loader2Icon, PlusIcon, PencilIcon, SearchIcon } from 'lucide-react'
 import { useUsinas } from '@/hooks/use-usinas'
-import { useGarantias } from '@/hooks/use-garantias'
 import { GarantiaFormDialog } from '@/components/garantias/GarantiaFormDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import api from '@/lib/api'
 import {
   Select,
   SelectContent,
@@ -49,6 +49,8 @@ export function GarantiasPage() {
   const [searchInput, setSearchInput] = useState('')
   const [page, setPage] = useState(1)
   const [formTarget, setFormTarget] = useState<FormTarget | null>(null)
+  const [garantias, setGarantias] = useState<Map<string, GarantiaUsina>>(new Map())
+  const [loadingGarantias, setLoadingGarantias] = useState(false)
 
   // Debounce para a busca
   useEffect(() => {
@@ -68,16 +70,48 @@ export function GarantiasPage() {
     page,
   })
 
-  // Buscar todas as garantias para cruzar com usinas
-  const { data: garantiasData, refetch: refetchGarantias } = useGarantias({})
+  // Buscar garantias para as usinas exibidas
+  useEffect(() => {
+    const fetchGarantias = async () => {
+      if (!usinasData?.results || usinasData.results.length === 0) {
+        setGarantias(new Map())
+        return
+      }
 
-  // Mapa de garantias por usina_id para lookup rápido
-  const garantiasPorUsina = new Map<string, GarantiaUsina>()
-  if (garantiasData?.results) {
-    for (const g of garantiasData.results) {
-      garantiasPorUsina.set(g.usina_id, g)
+      setLoadingGarantias(true)
+      const newGarantias = new Map<string, GarantiaUsina>()
+
+      try {
+        // Buscar garantias de todas as usinas da página atual
+        // Fazemos requisições paralelas para melhor performance
+        const promises = usinasData.results
+          .filter(u => u.status_garantia !== 'sem_garantia')
+          .map(async (usina) => {
+            try {
+              const response = await api.get(`/api/usinas/${usina.id}/`)
+              return { usinaId: usina.id, garantia: response.data.garantia }
+            } catch {
+              return { usinaId: usina.id, garantia: null }
+            }
+          })
+
+        const results = await Promise.all(promises)
+
+        for (const { usinaId, garantia } of results) {
+          if (garantia) {
+            newGarantias.set(usinaId, garantia)
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar garantias:', error)
+      }
+
+      setGarantias(newGarantias)
+      setLoadingGarantias(false)
     }
-  }
+
+    void fetchGarantias()
+  }, [usinasData])
 
   const totalPages = Math.ceil((usinasData?.count ?? 0) / 20)
 
@@ -108,7 +142,6 @@ export function GarantiasPage() {
   function handleSuccess() {
     setFormTarget(null)
     void refetchUsinas()
-    void refetchGarantias()
   }
 
   return (
@@ -185,7 +218,7 @@ export function GarantiasPage() {
         )}
       </div>
 
-      {usinasLoading ? (
+      {usinasLoading || loadingGarantias ? (
         <div className="flex justify-center py-8">
           <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -216,7 +249,7 @@ export function GarantiasPage() {
               </TableRow>
             ) : (
               (usinasData?.results ?? []).map((usina) => {
-                const garantia = garantiasPorUsina.get(usina.id)
+                const garantia = garantias.get(usina.id)
                 const isVencendo = garantia?.ativa && (garantia?.dias_restantes ?? 0) < 30
 
                 return (
