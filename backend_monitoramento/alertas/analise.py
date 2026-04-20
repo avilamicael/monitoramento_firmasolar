@@ -277,13 +277,20 @@ def _inversor_corrente_baixa_prolongada(inversor, snap, agora) -> bool:
 
 def _verificar_sem_geracao_diurna(usina, snapshot, inversores_snapshots, agora):
     """
-    Verifica se a usina esta sem gerar em horario comercial.
-    Distingue entre 'sem comunicacao' (inversores offline) e 'sem geracao' (inversores online mas sem gerar).
+    Verifica se a usina está sem gerar em horário comercial.
+
+    A distinção "sem comunicação" vs "sem geração" é responsabilidade exclusiva de
+    `_verificar_sem_comunicacao`, que usa `snapshot.data_medicao` (o timestamp real
+    reportado pelo provedor) e o threshold de 24h para decidir.
+
+    Aqui cuidamos apenas de `sem_geracao_diurna`: potência zero em horário comercial,
+    independentemente de quantos inversores estão online. A mensagem é ajustada para
+    diferenciar o caso "todos inversores offline" do "inversores online sem gerar",
+    mas o tipo de alerta é o mesmo.
     """
     chave = str(usina.id_usina_provedor)
 
     if snapshot.potencia_kw <= 0:
-        # Verificar se o problema e comunicacao (todos os inversores offline)
         total_inv = len(inversores_snapshots)
         offline = sum(
             1 for _, snap_inv in inversores_snapshots
@@ -291,29 +298,31 @@ def _verificar_sem_geracao_diurna(usina, snapshot, inversores_snapshots, agora):
         )
 
         if total_inv > 0 and offline == total_inv:
-            # Todos offline — problema de comunicacao, nao de geracao
-            _resolver_alerta_interno(usina, 'sem_geracao_diurna', chave)
-            _enriquecer_ou_criar(
-                usina=usina,
-                categoria='sem_comunicacao',
-                chave=chave,
-                nivel='importante',
-                mensagem=f'Todos os {total_inv} inversor(es) offline — possivel falha de comunicacao',
-                sugestao='Nenhum inversor esta comunicando. Verificar Wi-Fi, datalogger e alimentacao eletrica do local.',
+            mensagem = (
+                f'Todos os {total_inv} inversor(es) estao offline em horario comercial — '
+                f'sem geracao (potencia: {snapshot.potencia_kw} kW)'
+            )
+            sugestao = (
+                'Inversores nao estao reportando producao. Verificar disjuntor, alimentacao '
+                'eletrica e, se persistir, Wi-Fi/datalogger do local.'
             )
         else:
-            # Inversores online mas sem gerar — problema de geracao
-            _enriquecer_ou_criar(
-                usina=usina,
-                categoria='sem_geracao_diurna',
-                chave=chave,
-                nivel='importante',
-                mensagem=f'Usina sem geracao em horario comercial — potencia: {snapshot.potencia_kw} kW ({offline}/{total_inv} inversores offline)',
-                sugestao='Verificar se ha problema no inversor, disjuntor ou falta de energia na rede.',
+            mensagem = (
+                f'Usina sem geracao em horario comercial — potencia: {snapshot.potencia_kw} kW '
+                f'({offline}/{total_inv} inversores offline)'
             )
+            sugestao = 'Verificar se ha problema no inversor, disjuntor ou falta de energia na rede.'
+
+        _enriquecer_ou_criar(
+            usina=usina,
+            categoria='sem_geracao_diurna',
+            chave=chave,
+            nivel='importante',
+            mensagem=mensagem,
+            sugestao=sugestao,
+        )
     else:
         _resolver_alerta_interno(usina, 'sem_geracao_diurna', chave)
-        _resolver_alerta_interno(usina, 'sem_comunicacao', chave)
 
 
 def _verificar_sem_comunicacao(usina, snapshot, agora):

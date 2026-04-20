@@ -334,3 +334,97 @@ class TestEventoPorIncidente:
         assert len(sufixo) == 22  # ex: "20260420T195118481228Z"
         assert sufixo.endswith('Z')
         assert 'T' in sufixo
+
+
+# ── sem_geracao_diurna e sem_comunicacao não disputam a mesma categoria ─────
+
+class TestNaoCriarSemComunicacaoEmVerificarSemGeracao:
+    """
+    Antes, `_verificar_sem_geracao_diurna` criava um alerta de `sem_comunicacao`
+    quando todos os inversores estavam offline, mas `_verificar_sem_comunicacao`
+    (que roda logo depois, no mesmo ciclo) resolvia o alerta caso `data_medicao`
+    fosse recente. Resultado: cada coleta criava + resolvia o mesmo alerta,
+    gerando registros "fantasma" de 4ms de duração.
+
+    O fix: `_verificar_sem_geracao_diurna` nunca mais gera `sem_comunicacao` —
+    essa categoria é decidida exclusivamente por `_verificar_sem_comunicacao`,
+    baseado em `data_medicao >= 24h`.
+    """
+
+    def test_todos_inversores_offline_gera_sem_geracao_nao_sem_comunicacao(
+        self, db, usina, inversor
+    ):
+        from alertas.analise import _verificar_sem_geracao_diurna
+
+        # Snapshot atual: potencia 0, inversor offline
+        snap_usina = SnapshotUsina.objects.create(
+            usina=usina,
+            coletado_em=timezone.now(),
+            potencia_kw=0.0,
+            energia_hoje_kwh=0.0,
+            energia_mes_kwh=0.0,
+            energia_total_kwh=0.0,
+            status='offline',
+            qtd_inversores=1,
+            qtd_inversores_online=0,
+            qtd_alertas=0,
+        )
+        snap_inv = SnapshotInversor.objects.create(
+            inversor=inversor,
+            coletado_em=timezone.now(),
+            estado='offline',
+            pac_kw=0.0,
+            energia_hoje_kwh=0.0,
+            energia_total_kwh=1000.0,
+            tensao_ac_v=0.0,
+        )
+
+        _verificar_sem_geracao_diurna(
+            usina, snap_usina, [(inversor, snap_inv)], timezone.now()
+        )
+
+        # Deve criar sem_geracao_diurna, NÃO sem_comunicacao
+        assert Alerta.objects.filter(
+            usina=usina, categoria='sem_geracao_diurna', estado='ativo'
+        ).exists()
+        assert not Alerta.objects.filter(
+            usina=usina, categoria='sem_comunicacao'
+        ).exists()
+
+    def test_mensagem_diferencia_todos_offline_de_inversor_online_sem_gerar(
+        self, db, usina, inversor
+    ):
+        from alertas.analise import _verificar_sem_geracao_diurna
+
+        snap_usina = SnapshotUsina.objects.create(
+            usina=usina,
+            coletado_em=timezone.now(),
+            potencia_kw=0.0,
+            energia_hoje_kwh=0.0,
+            energia_mes_kwh=0.0,
+            energia_total_kwh=0.0,
+            status='offline',
+            qtd_inversores=1,
+            qtd_inversores_online=0,
+            qtd_alertas=0,
+        )
+        snap_inv = SnapshotInversor.objects.create(
+            inversor=inversor,
+            coletado_em=timezone.now(),
+            estado='offline',
+            pac_kw=0.0,
+            energia_hoje_kwh=0.0,
+            energia_total_kwh=1000.0,
+            tensao_ac_v=0.0,
+        )
+
+        _verificar_sem_geracao_diurna(
+            usina, snap_usina, [(inversor, snap_inv)], timezone.now()
+        )
+
+        mensagem = Alerta.objects.get(
+            usina=usina, categoria='sem_geracao_diurna'
+        ).mensagem
+        # Indica claramente que são TODOS os inversores offline (diagnóstico)
+        assert 'offline' in mensagem.lower()
+        assert '1' in mensagem  # total_inv = 1
