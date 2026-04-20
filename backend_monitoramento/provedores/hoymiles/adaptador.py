@@ -2,7 +2,8 @@
 Adaptador Hoymiles — une autenticação + consultas e normaliza para os dataclasses do sistema.
 """
 import logging
-from datetime import datetime, timezone
+import zoneinfo
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -31,6 +32,13 @@ _FLAGS_ALERTA = {
     's_uid':     ('Falha de identificação do dispositivo', 'aviso'),
 }
 
+# Limite acima do qual consideramos que `s_uoff` é falso positivo: a usina
+# não está reportando dados há tanto tempo que a causa provável é Wi-Fi /
+# datalogger offline, não desligamento real. Nesse caso o alerta interno
+# `sem_comunicacao` (em alertas/analise.py) assume — evita dois alertas
+# conflitantes sobre o mesmo problema.
+_HORAS_LIMITE_SUOFF = 24
+
 
 def _para_float(valor) -> float:
     try:
@@ -44,6 +52,28 @@ def _normalizar_status(codigo) -> str:
         return _STATUS_MAP.get(int(codigo), 'offline')
     except (TypeError, ValueError):
         return 'offline'
+
+
+def _parsear_data_medicao(realtime: dict, tz_nome: str) -> datetime | None:
+    """
+    Converte `last_data_time` (ou `data_time`) do payload Hoymiles em datetime UTC.
+
+    O timestamp vem como string naive ("YYYY-MM-DD HH:MM:SS") no fuso da usina.
+    Retorna None se ausente ou inválido — o chamador decide o fallback.
+    """
+    bruto = realtime.get('last_data_time') or realtime.get('data_time')
+    if not bruto:
+        return None
+    try:
+        naive = datetime.strptime(str(bruto), '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        logger.warning('Hoymiles: data_medicao em formato inesperado — %r', bruto)
+        return None
+    try:
+        tz = zoneinfo.ZoneInfo(tz_nome or 'America/Sao_Paulo')
+    except zoneinfo.ZoneInfoNotFoundError:
+        tz = zoneinfo.ZoneInfo('America/Sao_Paulo')
+    return naive.replace(tzinfo=tz).astimezone(timezone.utc)
 
 
 class HoymilesAdaptador(AdaptadorProvedor):
@@ -63,6 +93,9 @@ class HoymilesAdaptador(AdaptadorProvedor):
         self._token: str | None = credenciais.get('token')
         self._sessao = requests.Session()
         self._sessao.headers.update(_HEADERS_BASE)
+        # Cache populado em buscar_usinas() e consultado em buscar_alertas()
+        # para distinguir `s_uoff` real de Wi-Fi offline no mesmo ciclo de coleta.
+        self._ultima_comunicacao_por_usina: dict[str, datetime] = {}
 
     @property
     def chave_provedor(self) -> str:
@@ -96,6 +129,8 @@ class HoymilesAdaptador(AdaptadorProvedor):
     def buscar_usinas(self) -> list[DadosUsina]:
         self._garantir_autenticado()
         registros = listar_usinas(self._sessao, self._token)
+        # Reseta o cache a cada coleta — só dados do ciclo atual são relevantes.
+        self._ultima_comunicacao_por_usina = {}
         return [self._normalizar_usina(r) for r in registros]
 
     def buscar_inversores(self, id_usina_provedor: str) -> list[DadosInversor]:
@@ -115,8 +150,12 @@ class HoymilesAdaptador(AdaptadorProvedor):
     def _normalizar_usina(self, r: dict) -> DadosUsina:
         rt = r.get('_realtime') or {}
         potencia_w = _para_float(rt.get('real_power', 0))
+        id_usina = str(r.get('id', ''))
+        tz_nome = r.get('tz_name') or 'America/Sao_Paulo'
+        data_medicao = _parsear_data_medicao(rt, tz_nome) or datetime.now(timezone.utc)
+        self._ultima_comunicacao_por_usina[id_usina] = data_medicao
         return DadosUsina(
-            id_usina_provedor=str(r.get('id', '')),
+            id_usina_provedor=id_usina,
             nome=r.get('name') or '(sem nome)',
             capacidade_kwp=_para_float(r.get('capacitor') or r.get('capacity')),
             potencia_atual_kw=potencia_w / 1000 if potencia_w else 0.0,
@@ -125,8 +164,8 @@ class HoymilesAdaptador(AdaptadorProvedor):
             energia_mes_kwh=_para_float(rt.get('month_eq')) / 1000,
             energia_total_kwh=_para_float(rt.get('total_eq')) / 1000,
             status=_normalizar_status(r.get('status')),
-            data_medicao=datetime.now(timezone.utc),
-            fuso_horario=r.get('tz_name') or 'America/Sao_Paulo',
+            data_medicao=data_medicao,
+            fuso_horario=tz_nome,
             endereco=r.get('address') or '',
             qtd_inversores=0,
             qtd_inversores_online=0,
@@ -160,22 +199,44 @@ class HoymilesAdaptador(AdaptadorProvedor):
         )
 
     def _extrair_alertas(self, registros: list[dict]) -> list[DadosAlerta]:
+        agora = datetime.now(timezone.utc)
+        limite_suoff = timedelta(hours=_HORAS_LIMITE_SUOFF)
         resultado = []
         for r in registros:
             id_usina = str(r.get('id', ''))
             warn_data = r.get('warn_data') or {}
             for flag, (mensagem, nivel) in _FLAGS_ALERTA.items():
-                if warn_data.get(flag):
-                    resultado.append(DadosAlerta(
-                        id_alerta_provedor=f'{id_usina}_{flag}',
-                        id_tipo_alarme_provedor=flag,
-                        id_usina_provedor=id_usina,
-                        mensagem=mensagem,
-                        nivel=nivel,
-                        inicio=datetime.now(timezone.utc),
-                        equipamento_sn='',
-                        estado='ativo',
-                        sugestao='',
-                        payload_bruto=r,
-                    ))
+                if not warn_data.get(flag):
+                    continue
+                if flag == 's_uoff' and self._deve_suprimir_suoff(id_usina, agora, limite_suoff):
+                    continue
+                resultado.append(DadosAlerta(
+                    id_alerta_provedor=f'{id_usina}_{flag}',
+                    id_tipo_alarme_provedor=flag,
+                    id_usina_provedor=id_usina,
+                    mensagem=mensagem,
+                    nivel=nivel,
+                    inicio=agora,
+                    equipamento_sn='',
+                    estado='ativo',
+                    sugestao='',
+                    payload_bruto=r,
+                ))
         return resultado
+
+    def _deve_suprimir_suoff(self, id_usina: str, agora: datetime, limite: timedelta) -> bool:
+        """
+        `s_uoff` é suprimido quando a usina não comunica há mais que o limite:
+        nesses casos a causa provável é Wi-Fi/datalogger offline, não desligamento
+        real — o alerta interno `sem_comunicacao` (alertas/analise.py) trata o caso.
+        """
+        ultima = self._ultima_comunicacao_por_usina.get(id_usina)
+        if ultima is None:
+            return False
+        if agora - ultima <= limite:
+            return False
+        logger.info(
+            'Hoymiles: suprimindo s_uoff de %s — sem comunicar há %s (cobertura em sem_comunicacao)',
+            id_usina, agora - ultima,
+        )
+        return True

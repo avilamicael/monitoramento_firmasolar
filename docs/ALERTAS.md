@@ -2,14 +2,14 @@
 title: ALERTAS — Mapeamento e referência
 tipo: referencia
 tags: [alertas, provedores, referencia]
-updated: 2026-04-15
+updated: 2026-04-20
 ---
 
 # Mapeamento de Alertas — Firma Solar
 
 > Documento de referência para entender os alertas recebidos dos provedores, como são salvos no banco e como priorizar os problemas.
 >
-> **Atualizado em 2026-04-15** — remoção do estado `em_atendimento`, inclusão de alertas internos (`origem='interno'`) e regra de garantia ativa. Ver [[modulos/alertas]] para a visão técnica completa.
+> **Atualizado em 2026-04-20** — Hoymiles agora deriva `data_medicao` de `last_data_time` e suprime `s_uoff` quando a usina está sem comunicar há mais de 24h (caso fica coberto pelo alerta interno `sem_comunicacao`). Ver [[DECISIONS#2026-04-20]].
 
 ---
 
@@ -113,6 +113,8 @@ ServicoNotificacao
 | `dl` | Desconexão de link/comunicação | `critico` |
 | `s_uid` | Falha de identificação do dispositivo | `aviso` |
 
+> **Supressão de `s_uoff` antigo:** se a usina está sem reportar dados há mais de **24h** (`now - last_data_time > 24h`), a flag `s_uoff` é **suprimida no adaptador**. Nesse caso a causa provável é Wi-Fi/datalogger offline, não desligamento real — o alerta interno `sem_comunicacao` (em `alertas/analise.py`) cobre o cenário, com sugestão apropriada ("Verificar conexão de internet do local"). Outras flags (`dl`, `g_warn`, etc.) não são afetadas. Ver [[DECISIONS#2026-04-20]].
+
 | Campo derivado | Campo no Banco (`Alerta`) | Observação |
 |---|---|---|
 | `"{plant_id}_{flag}"` | `id_alerta_provedor` | Ex: `"12345_s_uoff"` |
@@ -123,6 +125,8 @@ ServicoNotificacao
 | *(vazio)* | `equipamento_sn` | Sem rastreio por dispositivo |
 | *(vazio)* | `sugestao` | Não fornecido pela API |
 | Dados da usina | `payload_bruto` | Auditoria |
+
+> **`data_medicao` da usina (Hoymiles):** é derivada de `last_data_time`/`data_time` do payload `_realtime`, convertido do fuso da usina para UTC. Fallback para `now()` apenas se o campo não estiver presente. Isso é crítico para o alerta interno `sem_comunicacao` funcionar corretamente.
 
 ---
 
