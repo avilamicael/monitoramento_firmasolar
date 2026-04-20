@@ -347,45 +347,75 @@ def _verificar_sem_comunicacao(usina, snapshot, agora):
 
 def _enriquecer_ou_criar(usina, categoria, chave, nivel, mensagem, sugestao='', equipamento_sn=''):
     """
-    Cria ou atualiza um alerta interno. Nao enriquece alertas do provedor
-    para evitar categorias erradas (ex: L3 warning categorizado como sem_geracao).
+    Cria ou atualiza um alerta interno para a categoria indicada.
+
+    Regras:
+      - Só existe UM alerta ativo por (usina, categoria, origem='interno').
+      - Se já existe um ativo → só atualiza mensagem/nível/atualizado_em.
+      - Se NÃO existe ativo (mesmo que haja resolvidos antigos na mesma
+        categoria) → cria um NOVO alerta. Nunca reabre alertas resolvidos:
+        cada ocorrência é preservada separadamente para análise histórica.
+      - `id_alerta_provedor` recebe sufixo de timestamp (microssegundos)
+        para garantir unicidade do (usina, id_alerta_provedor) sem
+        conflitar com o alerta resolvido anterior.
     """
     agora = dj_timezone.now()
 
     if SupressaoInterna.objects.filter(usina=usina, categoria=categoria).exists():
         return
 
-    id_alerta = f'interno_{categoria}_{chave}'
-    alerta, criado = Alerta.objects.get_or_create(
-        usina=usina,
-        id_alerta_provedor=id_alerta,
-        defaults={
-            'origem': 'interno',
-            'categoria': categoria,
-            'mensagem': mensagem,
-            'nivel': nivel,
-            'inicio': agora,
-            'estado': 'ativo',
-            'sugestao': sugestao,
-            'equipamento_sn': equipamento_sn,
-        },
+    alerta_ativo = (
+        Alerta.objects
+        .filter(usina=usina, origem='interno', categoria=categoria, estado='ativo')
+        .order_by('-inicio')
+        .first()
     )
 
-    if not criado:
-        campos = {'mensagem': mensagem}
-        if alerta.estado == 'resolvido':
-            campos['estado'] = 'ativo'
-            campos['fim'] = None
-        if alerta.nivel_escalou_para(nivel):
+    if alerta_ativo:
+        campos = {'mensagem': mensagem, 'atualizado_em': agora}
+        if sugestao:
+            campos['sugestao'] = sugestao
+        if alerta_ativo.nivel_escalou_para(nivel):
             campos['nivel'] = nivel
-        Alerta.objects.filter(pk=alerta.pk).update(**campos)
+        Alerta.objects.filter(pk=alerta_ativo.pk).update(**campos)
+        return
+
+    id_alerta = f'interno_{categoria}_{chave}_{sufixo_timestamp_id(agora)}'
+    Alerta.objects.create(
+        usina=usina,
+        origem='interno',
+        categoria=categoria,
+        id_alerta_provedor=id_alerta,
+        mensagem=mensagem,
+        nivel=nivel,
+        inicio=agora,
+        estado='ativo',
+        sugestao=sugestao,
+        equipamento_sn=equipamento_sn,
+    )
 
 
-def _resolver_alerta_interno(usina, categoria, chave):
-    """Resolve alerta interno pelo ID."""
-    id_alerta = f'interno_{categoria}_{chave}'
+def _resolver_alerta_interno(usina, categoria, chave=None):
+    """
+    Marca como resolvido o alerta interno ativo da categoria (se existir).
+
+    `chave` é aceito para compatibilidade com chamadores — não é mais
+    usado na identificação do alerta (categoria + origem já são suficientes,
+    já que só pode haver um ativo por categoria por usina).
+    """
+    agora = dj_timezone.now()
     Alerta.objects.filter(
         usina=usina,
-        id_alerta_provedor=id_alerta,
+        origem='interno',
+        categoria=categoria,
         estado='ativo',
-    ).update(estado='resolvido', fim=dj_timezone.now())
+    ).update(estado='resolvido', fim=agora, atualizado_em=agora)
+
+
+def sufixo_timestamp_id(dt) -> str:
+    """
+    Formata datetime como string compacta (microssegundos) para uso como
+    sufixo em `id_alerta_provedor`. Exposta porque `coleta/ingestao.py`
+    também precisa dela ao criar alertas de provedor.
+    """
+    return dt.strftime('%Y%m%dT%H%M%S%fZ')

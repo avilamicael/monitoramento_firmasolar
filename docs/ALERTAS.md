@@ -9,7 +9,7 @@ updated: 2026-04-20
 
 > Documento de referência para entender os alertas recebidos dos provedores, como são salvos no banco e como priorizar os problemas.
 >
-> **Atualizado em 2026-04-20** — Hoymiles agora deriva `data_medicao` de `last_data_time` e suprime `s_uoff` quando a usina está sem comunicar há mais de 24h (caso fica coberto pelo alerta interno `sem_comunicacao`). Ver [[DECISIONS#2026-04-20]].
+> **Atualizado em 2026-04-20** — (1) Hoymiles deriva `data_medicao` de `last_data_time` e suprime `s_uoff` quando a usina está sem comunicar há mais de 24h. (2) Sobretensão usa histerese + persistência de 3 coletas consecutivas. (3) Alertas nunca reabrem: cada evento é um registro novo, `id_alerta_provedor` ganha sufixo de timestamp. Ver [[DECISIONS#2026-04-20]].
 
 ---
 
@@ -347,7 +347,9 @@ Avisos de manutenção preventiva, atualizações ou condições não urgentes. 
             estado: RESOLVIDO
 ```
 
-> **Reabertura:** Se um alerta resolvido reaparece, volta para `ativo` automaticamente (`fim` é limpo para não distorcer a duração).
+> **Um alerta por evento (não reabre resolvidos):** Se a condição some e depois volta a ocorrer, um alerta **novo** é criado — o resolvido anterior permanece intocado. Assim cada ocorrência é contabilizável para relatório. Invariante: existe no máximo 1 alerta `ativo` por (usina, categoria) para internos e (usina, catalogo_alarme) para provedor. O `id_alerta_provedor` de cada evento ganha sufixo de timestamp (`YYYYMMDDTHHMMSSffffffZ`) para manter unicidade. Ver [[DECISIONS#2026-04-20 — Alertas]].
+>
+> **Sobretensão com persistência:** o alerta só abre após 3 coletas consecutivas com `tensao > usina.tensao_sobretensao_v` e só fecha após 3 coletas consecutivas com `tensao <= limite`. Evita picos momentâneos gerarem alertas ruidosos.
 >
 > **Regra de garantia:** alertas com `origem='interno'` só são gerados para usinas com `garantia.ativa=True` (ver [[modulos/alertas#Regra de garantia]] e [[arquitetura/decisoes#ADR-011]]).
 

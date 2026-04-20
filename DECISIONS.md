@@ -4,6 +4,64 @@ Registro de decisões de arquitetura não triviais.
 
 ---
 
+## 2026-04-20 — Alertas: um registro por evento, nunca reabrir resolvido
+
+**Contexto**
+O comportamento anterior reabria o mesmo `Alerta` sempre que uma condição previamente resolvida voltava a ocorrer: `estado` ia de `resolvido` → `ativo`, `fim` era limpo. Dois problemas práticos:
+
+1. **Perda de histórico.** Se a tensão da usina oscilava 10 vezes ao dia, o cliente via um único alerta antigo com `inicio = 15/04`, não 10 alertas com `fim` preenchido. Impossível contar quantos picos aconteceram no mês para relatório.
+2. **`atualizado_em` congelado.** `Alerta.objects.filter().update()` não dispara `auto_now=True` no Django — o campo ficava parado na data de criação mesmo quando o alerta era reconfirmado ou resolvido/reaberto. Do ponto de vista da UI, parecia que o alerta estava "preso", quando na verdade era silenciosamente reativado a cada ciclo.
+
+Na usina Agripino Teixeira (Hoymiles), os alertas `g_warn` e `l3_warn` estavam ativos desde 15/04 com `atualizado_em` idêntico, mas o provedor os reconfirmava a cada 10 min. Parecia bug visual; era perda de evidência.
+
+**Decisão**
+Mudança dupla, aplicada a alertas internos (`_enriquecer_ou_criar` em `alertas/analise.py`) e alertas de provedor (`sincronizar_alertas` em `coleta/ingestao.py`):
+
+1. **Nunca reabrir alerta resolvido.** Se a condição some e volta, cria um NOVO `Alerta`. Invariante mantido por lógica (e pelo próprio `unique_together`): existe no máximo 1 ativo por (usina, categoria) para internos e (usina, catalogo_alarme) para provedor.
+2. **Sufixo de timestamp no `id_alerta_provedor`.** Cada novo alerta ganha `{chave}_{YYYYMMDDTHHMMSSffffffZ}` — garante unicidade sem colidir com o resolvido anterior de mesmo prefixo. A constraint `(usina, id_alerta_provedor)` continua válida.
+3. **`atualizado_em` passa a ser atualizado explicitamente** em todo `.update()` que toca um Alerta (não podemos depender do `auto_now=True`).
+4. **Resolução por desaparecimento em provedores** passa a rastrear PKs tocados no ciclo (set `pks_tocados`) em vez de comparar `id_alerta_provedor` literal — necessário porque o ID muda a cada evento.
+
+O parâmetro `chave` em `_resolver_alerta_interno` ficou vestigial (categoria + origem já identificam); mantive aceitando o argumento para não quebrar os ~10 call sites, mas sem usá-lo.
+
+**Por quê**
+- Relatórios ("quantas vezes a usina X teve sobretensão em abril?") viram uma query trivial: `count()` por `(usina, categoria, origem='interno')` com filtro de data em `inicio`.
+- Duração real de cada incidente fica preservada em `fim - inicio` — antes, a "duração" após reabrir era cumulativa de múltiplos eventos.
+- UI mostra `atualizado_em` correto — operador sabe quando foi a última confirmação do alerta vs. quando começou.
+
+**Limitação**
+- Um tipo que "pisca" muito gera muitos alertas (1 por evento). Mitigação: na phase seguinte (histerese + persistência para sobretensão) já reduz drasticamente o piscar. Outras categorias oscilantes (`tensao_zero`, `corrente_baixa`) têm suas próprias regras de persistência.
+- Não migramos alertas históricos. Registros antigos continuam com `atualizado_em` congelado — só novos eventos a partir deste commit seguem a regra nova.
+
+---
+
+## 2026-04-20 — Sobretensão: histerese + persistência de 3 coletas
+
+**Contexto**
+A regra antiga `tensao_ac_v >= limite` abria o alerta e `< limite` resolvia em uma única coleta. Como a tensão AC oscila naturalmente (exemplo real: 225V → 241V → 228V → 238V → 241V em 6h), o alerta ficava ligando e desligando a cada ciclo — sem ninguém perceber, porque `atualizado_em` ficava congelado (ver ADR acima).
+
+Um inversor com tensão efetivamente estável a 241V gerava alerta contínuo (0,5% acima do limite, ruído de rede normal). O operador perdia confiança no alerta.
+
+**Decisão**
+Em `alertas/analise.py`:
+
+1. **Detecção**: `tensao > limite` (era `>=`). Igual ao limite conta como normal — só "passar do valor estipulado" é anormal.
+2. **Persistência**: abre o alerta apenas após 3 coletas consecutivas com pelo menos 1 inversor acima do limite; fecha apenas após 3 coletas consecutivas com todos os inversores iguais ou abaixo do limite. Oscilação intermediária mantém o estado atual.
+3. Constante `SOBRETENSAO_N_COLETAS = 3` no topo do módulo (fácil de ajustar no futuro).
+
+A persistência é medida por SnapshotUsina como marcador de ciclo, cruzando com SnapshotInversor em janela de 5 min. 3 queries por análise (1 para timestamps + 2 para consultas — a atual já foi salva quando a função roda).
+
+**Por quê**
+- A decisão do usuário: "se passar do valor estipulado para aquela usina, já tem que dar sobretensão. Se o valor for abaixo, independente de qual seja abaixo, igual ou abaixo do valor estipulado para a usina, aí pode voltar ao normal."
+- 3 coletas (~30 min de janela) é suficiente para filtrar picos momentâneos sem deixar passar sobretensão sustentada.
+- O valor de `tensao_sobretensao_v` é por usina (configurável no admin) — cobre o caso de localidades com tensão nominal mais alta (ex: rede que opera naturalmente em 242V).
+
+**Não alterado**
+- `tensao_zero`: mantida a regra atual (zero em qualquer momento). Usuário pediu para não mexer nesta categoria.
+- `corrente_baixa`: mantida a regra de 2h (já tinha sua própria persistência).
+
+---
+
 ## 2026-04-20 — Hoymiles: usar `last_data_time` como `data_medicao` e suprimir `s_uoff` quando antigo
 
 **Contexto**

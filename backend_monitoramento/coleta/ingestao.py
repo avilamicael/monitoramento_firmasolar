@@ -143,20 +143,27 @@ class ServicoIngestao:
 
     def sincronizar_alertas(self, alertas: list[DadosAlerta], usinas_por_id_provedor: dict) -> None:
         """
-        Sincroniza os alertas do provedor com o banco de dados:
+        Sincroniza os alertas do provedor com o banco de dados.
+
+        Invariante: existe no máximo UM alerta ativo por (usina, catalogo_alarme,
+        origem='provedor'). Quando um alerta é resolvido e o mesmo tipo volta a
+        aparecer, é criado um NOVO alerta (nunca reabre o antigo) — assim cada
+        ocorrência fica preservada para contagem histórica de eventos.
 
         - Consulta o CatalogoAlarme para obter nível efetivo e verificar supressão
         - Alarmes suprimidos (globalmente ou via RegraSupressao) são ignorados
-        - Novos alertas → cria + agenda notificação assíncrona (após commit)
-        - Alertas existentes → detecta escalonamento; atualiza nível/sugestão
-        - Alertas que sumiram do provedor → marca como 'resolvido'
-        - Apenas alertas de origem 'provedor' são gerenciados aqui
+        - Se não há alerta ativo do tipo → cria novo com sufixo de timestamp
+          e agenda notificação após commit
+        - Se há alerta ativo do tipo → atualiza mensagem/nível/atualizado_em
+          e notifica apenas se o nível escalou
+        - Alertas ativos cujo tipo não apareceu neste ciclo → marca como resolvido
 
         Args:
             alertas: lista de alertas retornados pelo provedor neste ciclo
             usinas_por_id_provedor: dicionário {id_provedor: Usina} com as usinas deste ciclo
         """
         from notificacoes.tasks import enviar_notificacao_alerta
+        from alertas.analise import sufixo_timestamp_id
 
         if not usinas_por_id_provedor:
             return
@@ -164,7 +171,10 @@ class ServicoIngestao:
         # Identifica o provedor a partir da primeira usina (todas são do mesmo ciclo)
         provedor = next(iter(usinas_por_id_provedor.values())).provedor
 
-        ids_ativos_provedor: set[str] = set()
+        agora = dj_timezone.now()
+        # PKs dos alertas tocados (criados ou atualizados) neste ciclo —
+        # usado no final para resolver os que não apareceram.
+        pks_tocados: set = set()
 
         for dados in alertas:
             usina = usinas_por_id_provedor.get(dados.id_usina_provedor)
@@ -238,12 +248,13 @@ class ServicoIngestao:
                     nivel_efetivo = catalogo.nivel_padrao
 
                 # Supressão inteligente: desligamento gradual (pôr do sol normal)
-                # Só aplica para sistema_desligado sem alerta já aberto no banco.
+                # Só aplica para sistema_desligado sem alerta já aberto do mesmo tipo.
                 # Se já existe alerta aberto (shutdown real anterior), processa normalmente.
                 if catalogo.tipo == 'sistema_desligado':
                     ja_aberto = Alerta.objects.filter(
                         usina=usina,
-                        id_alerta_provedor=dados.id_alerta_provedor,
+                        catalogo_alarme=catalogo,
+                        origem='provedor',
                         estado='ativo',
                     ).exists()
                     if not ja_aberto and e_desligamento_gradual(usina):
@@ -253,62 +264,83 @@ class ServicoIngestao:
                         )
                         continue
 
-            ids_ativos_provedor.add(dados.id_alerta_provedor)
+            # Lookup do alerta ATIVO do mesmo tipo (catalogo) para essa usina.
+            # Invariante: no máximo um ativo por (usina, catalogo, origem='provedor').
+            alerta_ativo = None
+            if catalogo is not None:
+                alerta_ativo = (
+                    Alerta.objects
+                    .filter(
+                        usina=usina,
+                        catalogo_alarme=catalogo,
+                        origem='provedor',
+                        estado='ativo',
+                    )
+                    .order_by('-inicio')
+                    .first()
+                )
 
-            alerta, criado = Alerta.objects.get_or_create(
-                usina=usina,
-                id_alerta_provedor=dados.id_alerta_provedor,
-                defaults={
-                    'catalogo_alarme': catalogo,
-                    'equipamento_sn': dados.equipamento_sn,
-                    'mensagem': dados.mensagem,
-                    'nivel': nivel_efetivo,
-                    'inicio': dados.inicio,
-                    'estado': 'ativo',
-                    'sugestao': dados.sugestao or (catalogo.sugestao if catalogo else ''),
-                    'payload_bruto': dados.payload_bruto,
-                },
-            )
-
-            if criado:
+            if alerta_ativo is None:
+                # Sem ativo existente — cria um novo. Sufixo de timestamp garante
+                # unicidade do id_alerta_provedor mesmo se existir um resolvido
+                # anterior com o mesmo prefixo (antes era `{plant}_{flag}`; agora
+                # vira `{plant}_{flag}_{timestamp}`).
+                id_unico = f'{dados.id_alerta_provedor}_{sufixo_timestamp_id(agora)}'
+                alerta = Alerta.objects.create(
+                    usina=usina,
+                    origem='provedor',
+                    catalogo_alarme=catalogo,
+                    id_alerta_provedor=id_unico,
+                    equipamento_sn=dados.equipamento_sn,
+                    mensagem=dados.mensagem,
+                    nivel=nivel_efetivo,
+                    inicio=dados.inicio,
+                    estado='ativo',
+                    sugestao=dados.sugestao or (catalogo.sugestao if catalogo else ''),
+                    payload_bruto=dados.payload_bruto,
+                )
+                pks_tocados.add(alerta.pk)
                 alerta_id = str(alerta.id)
                 transaction.on_commit(
                     lambda aid=alerta_id: enviar_notificacao_alerta.delay(aid, 'novo')
                 )
-                Alerta.objects.filter(pk=alerta.pk).update(notificacao_enviada=True)
-            else:
-                # Detectar escalonamento (qualquer subida de nível, não só aviso→crítico)
-                if alerta.nivel_escalou_para(nivel_efetivo):
-                    alerta_id = str(alerta.id)
-                    transaction.on_commit(
-                        lambda aid=alerta_id: enviar_notificacao_alerta.delay(aid, 'escalado')
-                    )
+                Alerta.objects.filter(pk=alerta.pk).update(
+                    notificacao_enviada=True,
+                    atualizado_em=agora,
+                )
+                continue
 
-                campos_update = {
-                    'nivel': nivel_efetivo,
-                    'sugestao': dados.sugestao or (catalogo.sugestao if catalogo else ''),
-                    'payload_bruto': dados.payload_bruto,
-                }
-                if catalogo and alerta.catalogo_alarme_id is None:
-                    campos_update['catalogo_alarme'] = catalogo
-                # Reabrir se tinha sido resolvido e voltou — limpa fim para não distorcer duração
-                if alerta.estado == 'resolvido':
-                    campos_update['estado'] = 'ativo'
-                    campos_update['fim'] = None
-                Alerta.objects.filter(pk=alerta.pk).update(**campos_update)
+            # Há alerta ativo do mesmo tipo — atualiza in-place.
+            pks_tocados.add(alerta_ativo.pk)
+            if alerta_ativo.nivel_escalou_para(nivel_efetivo):
+                alerta_id = str(alerta_ativo.id)
+                transaction.on_commit(
+                    lambda aid=alerta_id: enviar_notificacao_alerta.delay(aid, 'escalado')
+                )
 
-        # Resolver alertas do provedor que sumiram neste ciclo (não afeta alertas internos)
+            campos_update = {
+                'nivel': nivel_efetivo,
+                'mensagem': dados.mensagem,
+                'sugestao': dados.sugestao or (catalogo.sugestao if catalogo else ''),
+                'payload_bruto': dados.payload_bruto,
+                'atualizado_em': agora,
+            }
+            if catalogo and alerta_ativo.catalogo_alarme_id is None:
+                campos_update['catalogo_alarme'] = catalogo
+            Alerta.objects.filter(pk=alerta_ativo.pk).update(**campos_update)
+
+        # Resolver alertas do provedor cujo tipo não apareceu neste ciclo
+        # (exclui os que foram tocados — criados ou atualizados — acima).
         ids_usinas = [u.id for u in usinas_por_id_provedor.values()]
         resolvidos = Alerta.objects.filter(
             usina__in=ids_usinas,
             estado='ativo',
             origem='provedor',
-        ).exclude(
-            id_alerta_provedor__in=ids_ativos_provedor,
-        )
+        ).exclude(pk__in=pks_tocados)
         qtd_resolvidos = resolvidos.update(
             estado='resolvido',
-            fim=dj_timezone.now(),
+            fim=agora,
+            atualizado_em=agora,
         )
         if qtd_resolvidos:
             logger.info('Alertas resolvidos automaticamente: %d', qtd_resolvidos)

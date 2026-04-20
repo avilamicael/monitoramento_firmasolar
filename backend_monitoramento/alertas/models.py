@@ -172,7 +172,7 @@ class SupressaoInterna(models.Model):
 
 class Alerta(models.Model):
     """
-    Representa uma ocorrência de alarme em uma usina.
+    Representa uma ocorrência de alarme em uma usina — **um registro por evento**.
 
     Origem 'provedor': alerta retornado diretamente pela API do provedor (texto original).
     Origem 'interno': alerta gerado pela análise dos dados coletados (diagnóstico do sistema).
@@ -180,7 +180,13 @@ class Alerta(models.Model):
     Ciclo de vida:
         ativo → resolvido (problema desapareceu ou foi resolvido manualmente)
 
-    Se um alerta resolvido reaparecer no próximo ciclo de coleta, ele é reaberto (volta para 'ativo').
+    Regra de unicidade: existe no máximo UM alerta `ativo` por
+    (usina, categoria) para internos e (usina, catalogo_alarme) para
+    provedor. Reaparições após resolução criam **um novo alerta** (nunca
+    reabrem o resolvido), preservando o histórico de eventos para relatório.
+    O `id_alerta_provedor` recebe sufixo de timestamp para garantir unicidade
+    do par (usina, id_alerta_provedor).
+
     Se um alerta subir de nível, uma notificação de escalonamento é disparada.
     """
     NIVEL_CHOICES = [

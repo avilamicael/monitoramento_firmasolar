@@ -16,6 +16,9 @@ from alertas.analise import (
     SOBRETENSAO_N_COLETAS,
     _alerta_agrupado_sobretensao,
     _contar_coletas_com_sobretensao,
+    _enriquecer_ou_criar,
+    _resolver_alerta_interno,
+    sufixo_timestamp_id,
 )
 from alertas.models import Alerta
 from provedores.models import CredencialProvedor
@@ -205,3 +208,129 @@ class TestAlertaAgrupadoSobretensao:
     def test_constante_de_coletas_e_3(self):
         """Contrato fixado para evitar regressão silenciosa."""
         assert SOBRETENSAO_N_COLETAS == 3
+
+
+# ── Evento por incidente: nunca reabre alerta resolvido ─────────────────────
+
+class TestEventoPorIncidente:
+    """
+    Quando uma condição some e reaparece, o sistema cria um NOVO alerta
+    em vez de reabrir o antigo resolvido. Assim relatórios podem contar
+    o número de eventos (ex: 3 picos de sobretensão em abril).
+    """
+
+    def test_cria_alerta_novo_quando_nao_ha_ativo(self, db, usina):
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='k',
+            nivel='aviso', mensagem='primeiro evento',
+        )
+        assert Alerta.objects.filter(
+            usina=usina, categoria='sobretensao', estado='ativo'
+        ).count() == 1
+
+    def test_atualiza_alerta_ativo_existente_em_vez_de_criar_outro(self, db, usina):
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='k',
+            nivel='aviso', mensagem='mensagem inicial',
+        )
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='k',
+            nivel='aviso', mensagem='mensagem atualizada',
+        )
+        ativos = Alerta.objects.filter(
+            usina=usina, categoria='sobretensao', estado='ativo'
+        )
+        assert ativos.count() == 1
+        assert ativos.first().mensagem == 'mensagem atualizada'
+
+    def test_cria_alerta_novo_apos_resolvido_anterior(self, db, usina):
+        """
+        Fluxo: abre → resolve → condição volta → deve criar NOVO alerta
+        (nunca reabrir o resolvido).
+        """
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='k',
+            nivel='aviso', mensagem='primeiro evento',
+        )
+        _resolver_alerta_interno(usina, 'sobretensao')
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='k',
+            nivel='aviso', mensagem='segundo evento',
+        )
+        total = Alerta.objects.filter(usina=usina, categoria='sobretensao').count()
+        resolvidos = Alerta.objects.filter(
+            usina=usina, categoria='sobretensao', estado='resolvido'
+        ).count()
+        ativos = Alerta.objects.filter(
+            usina=usina, categoria='sobretensao', estado='ativo'
+        ).count()
+        assert total == 2
+        assert resolvidos == 1
+        assert ativos == 1
+
+    def test_id_alerta_provedor_unico_para_cada_evento(self, db, usina):
+        """Cada novo alerta ganha sufixo de timestamp — unicidade preservada."""
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='k',
+            nivel='aviso', mensagem='evento 1',
+        )
+        _resolver_alerta_interno(usina, 'sobretensao')
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='k',
+            nivel='aviso', mensagem='evento 2',
+        )
+        ids = list(Alerta.objects
+                   .filter(usina=usina, categoria='sobretensao')
+                   .values_list('id_alerta_provedor', flat=True))
+        assert len(ids) == 2
+        assert len(set(ids)) == 2, f'IDs devem ser únicos: {ids}'
+
+    def test_resolver_usa_categoria_em_vez_de_id_alerta_provedor(self, db, usina):
+        """`chave` parâmetro é ignorado — categoria + origem já identificam."""
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='qualquer',
+            nivel='aviso', mensagem='evento',
+        )
+        # Resolve sem passar `chave`
+        _resolver_alerta_interno(usina, 'sobretensao')
+        assert not Alerta.objects.filter(
+            usina=usina, categoria='sobretensao', estado='ativo'
+        ).exists()
+
+    def test_resolver_atualiza_fim_e_atualizado_em(self, db, usina):
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='k',
+            nivel='aviso', mensagem='evento',
+        )
+        antes = timezone.now()
+        _resolver_alerta_interno(usina, 'sobretensao')
+        alerta = Alerta.objects.get(usina=usina, categoria='sobretensao')
+        assert alerta.estado == 'resolvido'
+        assert alerta.fim is not None
+        assert alerta.fim >= antes
+        assert alerta.atualizado_em >= antes
+
+    def test_atualizado_em_muda_ao_reconfirmar_alerta_ativo(self, db, usina):
+        """Phase 3: toda reconfirmação atualiza `atualizado_em`."""
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='k',
+            nivel='aviso', mensagem='inicial',
+        )
+        original = Alerta.objects.get(usina=usina, categoria='sobretensao').atualizado_em
+        # Força passagem de tempo
+        import time
+        time.sleep(0.01)
+        _enriquecer_ou_criar(
+            usina=usina, categoria='sobretensao', chave='k',
+            nivel='aviso', mensagem='reconfirmada',
+        )
+        atualizado = Alerta.objects.get(usina=usina, categoria='sobretensao').atualizado_em
+        assert atualizado > original
+
+    def test_sufixo_timestamp_id_tem_formato_compacto(self):
+        """Formato YYYYMMDDTHHMMSSffffffZ — compacto, ordenável, único."""
+        dt = timezone.now()
+        sufixo = sufixo_timestamp_id(dt)
+        assert len(sufixo) == 22  # ex: "20260420T195118481228Z"
+        assert sufixo.endswith('Z')
+        assert 'T' in sufixo
