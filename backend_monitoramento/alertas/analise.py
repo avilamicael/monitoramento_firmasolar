@@ -12,7 +12,7 @@ Uma usina com 5 inversores em sobretensao gera 1 alerta, nao 5.
 Tipos de alerta:
   Instantaneos:
     - tensao_zero: tensao AC = 0 em qualquer momento
-    - sobretensao: tensao AC >= 240V
+    - sobretensao: tensao AC > limite da usina, persistida por SOBRETENSAO_N_COLETAS
     - sem_geracao_diurna: usina com pac=0 entre 8h-18h
     - sem_comunicacao: inversor sem comunicar ha 24h+
 
@@ -39,6 +39,17 @@ HORA_FIM_CORRENTE = 17
 TENSAO_SOBRETENSAO_V_PADRAO = 240.0  # fallback — cada usina tem seu próprio threshold
 CORRENTE_MINIMA_A = 0.1
 CORRENTE_BAIXA_HORAS = 2
+
+# Persistência para sobretensão: precisa N coletas consecutivas acima do limite para abrir
+# e N coletas consecutivas iguais ou abaixo para fechar. Evita oscilar ao redor do limite.
+# Regra do limite: > usina.tensao_sobretensao_v abre; <= fecha (borda é estado "normal").
+SOBRETENSAO_N_COLETAS = 3
+
+# Janela de tolerância ao cruzar timestamps de SnapshotUsina com SnapshotInversor.
+# Em uma mesma coleta, os timestamps não são idênticos (snapshots são criados em
+# momentos ligeiramente diferentes). Uma janela pequena garante que correlacionamos
+# snapshots da mesma coleta sem pegar snapshots de coletas adjacentes.
+_JANELA_CICLO = timedelta(minutes=5)
 
 
 def _tem_garantia_ativa(usina: Usina) -> bool:
@@ -121,8 +132,10 @@ def analisar_usina(usina: Usina, snapshot: SnapshotUsina, inversores_snapshots: 
         if snap_inv.tensao_ac_v is not None and snap_inv.tensao_ac_v == 0:
             inversores_tensao_zero.append((inversor, snap_inv))
 
-        # Sobretensao
-        if snap_inv.tensao_ac_v is not None and snap_inv.tensao_ac_v >= limite_sobretensao:
+        # Sobretensao — só passa do limite (> limite); igual/abaixo é considerado normal.
+        # A persistência (abrir apenas após N coletas consecutivas) é aplicada depois,
+        # em _alerta_agrupado_sobretensao, consultando o histórico dos últimos snapshots.
+        if snap_inv.tensao_ac_v is not None and snap_inv.tensao_ac_v > limite_sobretensao:
             inversores_sobretensao.append((inversor, snap_inv))
 
         # Corrente baixa (progressivo — verifica historico)
@@ -155,19 +168,63 @@ def _alerta_agrupado_tensao_zero(usina, afetados, todos):
 
 
 def _alerta_agrupado_sobretensao(usina, afetados, todos, limite):
+    """
+    Persistência:
+      - Abre o alerta apenas se as últimas SOBRETENSAO_N_COLETAS coletas tiveram
+        pelo menos um inversor acima do limite.
+      - Fecha o alerta apenas se as últimas SOBRETENSAO_N_COLETAS coletas tiveram
+        todos os inversores iguais ou abaixo do limite.
+      - Caso intermediário (oscilação), mantém o estado atual — não abre nem fecha.
+    """
     chave = str(usina.id_usina_provedor)
-    if afetados:
+    n_acima = _contar_coletas_com_sobretensao(usina, limite, SOBRETENSAO_N_COLETAS)
+
+    if n_acima >= SOBRETENSAO_N_COLETAS:
         detalhes = [f'{inv.numero_serie}: {snap.tensao_ac_v:.1f}V' for inv, snap in afetados]
+        if not detalhes:
+            # O histórico aponta sobretensão sustentada mas a coleta atual já normalizou:
+            # ainda conta como anormal até termos N coletas consecutivas abaixo do limite.
+            detalhes = [f'(coleta atual sem leitura acima de {limite}V)']
         _enriquecer_ou_criar(
             usina=usina,
             categoria='sobretensao',
             chave=chave,
             nivel='aviso',
-            mensagem=f'Sobretensao em {len(afetados)} inversor(es) — {", ".join(detalhes)} (limite: {limite}V)',
+            mensagem=f'Sobretensao em {len(afetados) or "1"} inversor(es) — {", ".join(detalhes)} (limite: {limite}V, persistencia: {SOBRETENSAO_N_COLETAS} coletas)',
             sugestao='Tensao acima do normal. Monitorar — risco de desligamento por protecao do inversor.',
         )
-    else:
+    elif n_acima == 0:
         _resolver_alerta_interno(usina, 'sobretensao', chave)
+    # else: entre 1 e N-1 coletas afetadas → mantém estado atual (sem ação)
+
+
+def _contar_coletas_com_sobretensao(usina, limite, n) -> int:
+    """
+    Retorna quantas das últimas `n` coletas da usina tiveram pelo menos um
+    inversor com `tensao_ac_v > limite`. Retorna 0 se não há histórico suficiente
+    (menos de `n` coletas) — assim o sistema aguarda dados estáveis antes de abrir
+    ou fechar alertas.
+    """
+    timestamps = list(
+        SnapshotUsina.objects
+        .filter(usina=usina)
+        .order_by('-coletado_em')
+        .values_list('coletado_em', flat=True)[:n]
+    )
+    if len(timestamps) < n:
+        return 0
+
+    contagem = 0
+    for t in timestamps:
+        existe_acima = SnapshotInversor.objects.filter(
+            inversor__usina=usina,
+            coletado_em__gte=t - _JANELA_CICLO,
+            coletado_em__lte=t + _JANELA_CICLO,
+            tensao_ac_v__gt=limite,
+        ).exists()
+        if existe_acima:
+            contagem += 1
+    return contagem
 
 
 def _alerta_agrupado_corrente_baixa(usina, afetados, todos):
