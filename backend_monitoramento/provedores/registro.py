@@ -19,12 +19,14 @@ def _carregar_provedores():
     from provedores.fusionsolar import FusionSolarAdaptador
     from provedores.auxsol import AuxsolAdaptador
     from provedores.solarman import SolarmanAdaptador
+    from provedores.foxess import FoxessAdaptador
 
     REGISTRO['solis'] = SolisAdaptador
     REGISTRO['hoymiles'] = HoymilesAdaptador
     REGISTRO['fusionsolar'] = FusionSolarAdaptador
     REGISTRO['auxsol'] = AuxsolAdaptador
     REGISTRO['solarman'] = SolarmanAdaptador
+    REGISTRO['foxess'] = FoxessAdaptador
 
 
 def get_adaptador(chave_provedor: str, credenciais: dict) -> AdaptadorProvedor:

@@ -14,6 +14,7 @@ LIMITES: dict[str, tuple[int, int]] = {
     'hoymiles':    (5, 10),   # 5 req / 10s
     'fusionsolar': (1, 5),    # 1 req / 5s — limite estrito por endpoint
     'solarman':    (10, 60),  # 10 req / 60s
+    'foxess':      (1, 1),    # 1 req/s documentado pela FoxESS
 }
 
 _cliente_redis = None

@@ -61,7 +61,14 @@ class Usina(models.Model):
         return f'{self.nome} ({self.get_provedor_display() if hasattr(self, "get_provedor_display") else self.provedor})'
 
     def get_provedor_display(self):
-        nomes = {'solis': 'Solis', 'hoymiles': 'Hoymiles', 'fusionsolar': 'FusionSolar'}
+        nomes = {
+            'solis': 'Solis',
+            'hoymiles': 'Hoymiles',
+            'fusionsolar': 'FusionSolar',
+            'solarman': 'Solarman',
+            'auxsol': 'AuxSol',
+            'foxess': 'FoxESS',
+        }
         return nomes.get(self.provedor, self.provedor)
 
 

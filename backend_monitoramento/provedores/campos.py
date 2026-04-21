@@ -23,6 +23,7 @@ CAMPOS_POR_PROVEDOR: dict[str, list[tuple[str, str, str]]] = {
     'fusionsolar': [('username', 'Usuário', 'texto'), ('system_code', 'System Code', 'senha')],
     'solarman':    [('email', 'Email', 'texto'), ('password', 'Senha', 'senha')],
     'auxsol':      [('account', 'Usuário / Email', 'texto'), ('password', 'Senha', 'senha')],
+    'foxess':      [('api_key', 'API Key', 'senha')],
 }
 
 # Provedores que usam token JWT inserido manualmente pelo operador

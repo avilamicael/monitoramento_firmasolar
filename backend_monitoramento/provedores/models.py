@@ -13,6 +13,7 @@ class CredencialProvedor(models.Model):
         ('fusionsolar', 'Huawei FusionSolar'),
         ('solarman',    'Solarman Pro'),
         ('auxsol',      'AuxSol Cloud'),
+        ('foxess',      'FoxESS Cloud'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
