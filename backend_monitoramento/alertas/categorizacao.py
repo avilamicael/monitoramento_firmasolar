@@ -22,6 +22,21 @@ _CATEGORIA_POR_FLAG_HOYMILES: dict[str, str] = {
     's_uid':     'comunicacao',
 }
 
+
+def _categoria_por_codigo_foxess(id_tipo: str) -> str | None:
+    """
+    Mapeia códigos de falha FoxESS (linha Q, microinversores) para categoria.
+
+    O código pode vir como "4151" ou como lista "4151,4156,4158" (múltiplas
+    falhas simultâneas — comum quando a rede cai e dispara 3 alarmes AC ao
+    mesmo tempo). Usamos a categoria do código mais severo.
+    """
+    from provedores.foxess.catalogo_falhas import interpretar
+    _, _, categoria = interpretar(id_tipo)
+    # Catálogo retorna 'preventivo' para códigos não mapeados — isso já é o
+    # fallback padrão, então só retornamos se realmente mapeamos algo.
+    return categoria if categoria != 'preventivo' else None
+
 # Palavras-chave por categoria — avaliadas em ordem de prioridade
 # Mais específico primeiro para evitar colisão
 _PALAVRAS_CHAVE_ORDENADAS: list[tuple[str, list[str]]] = [
@@ -63,6 +78,11 @@ def inferir_categoria(mensagem: str, provedor: str, id_tipo: str = '') -> str:
     """
     if provedor == 'hoymiles' and id_tipo in _CATEGORIA_POR_FLAG_HOYMILES:
         return _CATEGORIA_POR_FLAG_HOYMILES[id_tipo]
+
+    if provedor == 'foxess' and id_tipo:
+        categoria = _categoria_por_codigo_foxess(id_tipo)
+        if categoria:
+            return categoria
 
     texto = mensagem.lower()
     for categoria, palavras in _PALAVRAS_CHAVE_ORDENADAS:

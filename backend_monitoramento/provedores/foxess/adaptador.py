@@ -354,23 +354,35 @@ class FoxessAdaptador(AdaptadorProvedor):
         """
         Sintetiza um alerta a partir de currentFault/currentFaultCount.
 
-        `id_alerta_provedor` = `{sn}_{codigo_fault}`. Mesmo código no mesmo device
-        mantém a identidade ao longo do tempo — o ServicoIngestao preserva o
-        registro original (e seu `inicio`) via upsert.
+        `id_alerta_provedor` = `{sn}_{codigos_fault}` — preserva a identidade
+        ao longo do tempo. Se o inversor reporta a mesma combinação de códigos
+        na próxima coleta, o ServicoIngestao mantém o registro original via
+        upsert (incluindo o `inicio` da primeira detecção).
+
+        Mensagem, nível e categoria vêm do catálogo interno (linha Q), baseado
+        no manual oficial do fabricante. Códigos fora do catálogo geram alerta
+        genérico com nível 'aviso'.
         """
+        from .catalogo_falhas import interpretar
+
         fault = variaveis.get('currentFault')
         if isinstance(fault, str):
             fault = fault.strip()
-        codigo = str(fault) if fault not in (None, '', 0, '0') else 'fault'
+        tem_codigo = fault not in (None, '', 0, '0')
+        codigo = str(fault) if tem_codigo else 'fault'
         id_alerta = f'{sn}_{codigo}'
-        mensagem = f'Código de falha {codigo} reportado pelo inversor'
+
+        # Passa o valor original (vazio ou não) — interpretar() retorna
+        # 'critico' + mensagem genérica quando chega sem código, preservando
+        # a severidade conservadora para inconsistências da API (ex: count>0
+        # mas currentFault vazio).
+        mensagem, nivel, _categoria = interpretar(fault if tem_codigo else '')
+
         return DadosAlerta(
             id_alerta_provedor=id_alerta,
             id_usina_provedor=id_usina,
             mensagem=mensagem,
-            # Sem catálogo público de severidade — alertas da FoxESS são 'critico'
-            # por padrão. O operador pode reclassificar via CatalogoAlarme.
-            nivel='critico',
+            nivel=nivel,
             inicio=datetime.now(timezone.utc),
             equipamento_sn=sn,
             estado='ativo',

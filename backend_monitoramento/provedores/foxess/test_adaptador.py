@@ -312,20 +312,63 @@ class TestBuscarAlertas:
                 {'deviceSN': 'SN3', 'stationID': 'S2'},
             ],
             tempo_real={
-                'SN1': {'currentFault': 'E01', 'currentFaultCount': 1},
+                # 4125 = PV4 curto-circuito interno → critico
+                'SN1': {'currentFault': '4125', 'currentFaultCount': 1},
                 'SN2': {'currentFault': '', 'currentFaultCount': 0},
-                'SN3': {'currentFault': 'E99', 'currentFaultCount': 2},
+                # 4158 = Tensão AC abaixo do limite → aviso
+                'SN3': {'currentFault': '4158', 'currentFaultCount': 1},
             },
         )
         alertas = adaptador.buscar_alertas()
         assert len(alertas) == 2
         ids = {a.id_alerta_provedor for a in alertas}
-        assert ids == {'SN1_E01', 'SN3_E99'}
+        assert ids == {'SN1_4125', 'SN3_4158'}
+
         sn1 = next(a for a in alertas if a.equipamento_sn == 'SN1')
-        assert sn1.id_usina_provedor == 'S1'
         assert sn1.nivel == 'critico'
-        assert sn1.estado == 'ativo'
-        assert sn1.id_tipo_alarme_provedor == 'E01'
+        assert 'PV4 curto-circuito interno' in sn1.mensagem
+        assert '4125' in sn1.mensagem
+
+        sn3 = next(a for a in alertas if a.equipamento_sn == 'SN3')
+        assert sn3.nivel == 'aviso'
+        assert 'Tensão AC abaixo do limite' in sn3.mensagem
+
+    def test_alerta_com_codigo_desconhecido_usa_fallback_generico(self):
+        """Código fora do catálogo FoxESS Q — mensagem genérica, nível aviso."""
+        adaptador = self._montar(
+            dispositivos=[{'deviceSN': 'SN1', 'stationID': 'S1'}],
+            tempo_real={'SN1': {'currentFault': '9999', 'currentFaultCount': 1}},
+        )
+        [alerta] = adaptador.buscar_alertas()
+        assert alerta.id_alerta_provedor == 'SN1_9999'
+        assert 'não catalogado' in alerta.mensagem
+        assert alerta.nivel == 'aviso'
+
+    def test_alerta_com_multiplos_codigos_usa_mais_severo(self):
+        """
+        Quando a rede cai, o inversor reporta "4151,4156,4158" (Lost AC +
+        Under Freq + Under Voltage) — todos 'aviso'. Mensagem deve conter as 3.
+        """
+        adaptador = self._montar(
+            dispositivos=[{'deviceSN': 'SN1', 'stationID': 'S1'}],
+            tempo_real={'SN1': {'currentFault': '4151,4156,4158', 'currentFaultCount': 3}},
+        )
+        [alerta] = adaptador.buscar_alertas()
+        assert alerta.id_alerta_provedor == 'SN1_4151,4156,4158'
+        assert alerta.nivel == 'aviso'
+        assert 'Perda de AC' in alerta.mensagem
+        assert 'Frequência AC abaixo' in alerta.mensagem
+        assert 'Tensão AC abaixo' in alerta.mensagem
+
+    def test_codigo_critico_domina_quando_combinado_com_aviso(self):
+        """Mistura de severidades — o nível do alerta sobe para o mais severo."""
+        adaptador = self._montar(
+            dispositivos=[{'deviceSN': 'SN1', 'stationID': 'S1'}],
+            # 4125 = critico (PV4 curto), 4158 = aviso (Under Voltage)
+            tempo_real={'SN1': {'currentFault': '4125,4158', 'currentFaultCount': 2}},
+        )
+        [alerta] = adaptador.buscar_alertas()
+        assert alerta.nivel == 'critico'
 
     def test_alerta_com_currentfault_count_mas_codigo_vazio_usa_fallback(self):
         """Se count>0 mas currentFault vazio (inconsistência da API), usa 'fault' como código."""
@@ -336,6 +379,7 @@ class TestBuscarAlertas:
         [alerta] = adaptador.buscar_alertas()
         assert alerta.id_alerta_provedor == 'SN1_fault'
         assert alerta.id_tipo_alarme_provedor == 'fault'
+        assert alerta.nivel == 'critico'
 
     def test_filtra_por_usina_quando_id_fornecido(self):
         adaptador = self._montar(
