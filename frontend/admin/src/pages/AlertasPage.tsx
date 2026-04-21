@@ -120,6 +120,7 @@ export function AlertasPage() {
                     <SelectItem value="fusionsolar">FusionSolar</SelectItem>
                     <SelectItem value="auxsol">AuxSol</SelectItem>
                     <SelectItem value="solarman">Solarman</SelectItem>
+                    <SelectItem value="foxess">FoxESS</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -35,6 +35,7 @@ const PROVEDOR_LABELS: Record<string, string> = {
   fusionsolar: 'Huawei FusionSolar',
   auxsol: 'AuxSol Cloud',
   solarman: 'Solarman Pro',
+  foxess: 'FoxESS Cloud',
 }
 
 function formatarNumero(valor: number | null | undefined, decimais = 2): string {

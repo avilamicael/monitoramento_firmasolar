@@ -26,6 +26,7 @@ const PROVEDOR_LABELS: Record<string, string> = {
   fusionsolar: 'FusionSolar',
   auxsol: 'AuxSol Cloud',
   solarman: 'Solarman',
+  foxess: 'FoxESS',
 }
 
 function montarUrlProvedor(provedor: string, idUsina: string): string | null {
@@ -40,6 +41,8 @@ function montarUrlProvedor(provedor: string, idUsina: string): string | null {
       return `https://global.hoymiles.com/website/plant/detail/${idUsina}`
     case 'fusionsolar':
       return `https://intl.fusionsolar.huawei.com/#/energy/list/station/${idUsina}`
+    case 'foxess':
+      return `https://www.foxesscloud.com/page/station/detail?stationID=${idUsina}`
     default:
       return null
   }
