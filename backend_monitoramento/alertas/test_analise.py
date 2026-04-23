@@ -428,3 +428,142 @@ class TestNaoCriarSemComunicacaoEmVerificarSemGeracao:
         # Indica claramente que são TODOS os inversores offline (diagnóstico)
         assert 'offline' in mensagem.lower()
         assert '1' in mensagem  # total_inv = 1
+
+
+class TestCoerenciaUsinaInversor:
+    """
+    Regra: quando o nível-usina reporta potencia_kw=0 mas os inversores individuais
+    na mesma coleta estão gerando (soma pac_kw > 0), confiamos nos inversores —
+    são a fonte primária — e não abrimos `sem_geracao_diurna`.
+
+    Motivação real (2026-04-23): usina "Cleber E Bruna" (Hoymiles) teve um ciclo
+    em que a API devolveu `real_power=0` e `warn_data.s_uoff=true`, mas os quatro
+    inversores individuais vieram com pac_kw somando ~3.77 kW. Nosso alerta
+    `sem_geracao_diurna` foi aberto indevidamente.
+    """
+
+    def test_nao_cria_quando_potencia_usina_zero_mas_inversores_gerando(
+        self, db, usina, inversor
+    ):
+        from alertas.analise import _verificar_sem_geracao_diurna
+
+        snap_usina = SnapshotUsina.objects.create(
+            usina=usina,
+            coletado_em=timezone.now(),
+            potencia_kw=0.0,
+            energia_hoje_kwh=10.0,
+            energia_mes_kwh=100.0,
+            energia_total_kwh=1000.0,
+            status='normal',
+            qtd_inversores=1,
+            qtd_inversores_online=1,
+            qtd_alertas=0,
+        )
+        snap_inv = SnapshotInversor.objects.create(
+            inversor=inversor,
+            coletado_em=timezone.now(),
+            estado='normal',
+            pac_kw=1.5,  # gerando
+            energia_hoje_kwh=10.0,
+            energia_total_kwh=1000.0,
+            tensao_ac_v=230.0,
+        )
+
+        _verificar_sem_geracao_diurna(
+            usina, snap_usina, [(inversor, snap_inv)], timezone.now()
+        )
+
+        assert not Alerta.objects.filter(
+            usina=usina, categoria='sem_geracao_diurna', estado='ativo'
+        ).exists()
+
+    def test_resolve_alerta_antigo_quando_inversores_voltam_a_gerar(
+        self, db, usina, inversor
+    ):
+        """
+        Alerta pré-existente (criado por ciclo anterior com payload incoerente) deve
+        ser resolvido assim que detectamos que os inversores estão gerando, mesmo que
+        o snapshot da usina ainda insista em reportar potencia_kw=0.
+        """
+        from alertas.analise import _verificar_sem_geracao_diurna
+
+        Alerta.objects.create(
+            usina=usina,
+            origem='interno',
+            categoria='sem_geracao_diurna',
+            id_alerta_provedor='interno_sem_geracao_diurna_prev',
+            mensagem='alerta anterior',
+            nivel='importante',
+            inicio=timezone.now() - datetime.timedelta(hours=1),
+            estado='ativo',
+        )
+        snap_usina = SnapshotUsina.objects.create(
+            usina=usina,
+            coletado_em=timezone.now(),
+            potencia_kw=0.0,
+            energia_hoje_kwh=5.0,
+            energia_mes_kwh=50.0,
+            energia_total_kwh=500.0,
+            status='normal',
+            qtd_inversores=1,
+            qtd_inversores_online=1,
+            qtd_alertas=0,
+        )
+        snap_inv = SnapshotInversor.objects.create(
+            inversor=inversor,
+            coletado_em=timezone.now(),
+            estado='normal',
+            pac_kw=0.8,
+            energia_hoje_kwh=5.0,
+            energia_total_kwh=500.0,
+            tensao_ac_v=228.0,
+        )
+
+        _verificar_sem_geracao_diurna(
+            usina, snap_usina, [(inversor, snap_inv)], timezone.now()
+        )
+
+        assert not Alerta.objects.filter(
+            usina=usina, categoria='sem_geracao_diurna', estado='ativo'
+        ).exists()
+        resolvido = Alerta.objects.get(
+            usina=usina, categoria='sem_geracao_diurna', estado='resolvido'
+        )
+        assert resolvido.fim is not None
+
+    def test_cria_alerta_quando_usina_e_inversores_zerados(
+        self, db, usina, inversor
+    ):
+        """Comportamento original preservado: se nem usina nem inversores gerando,
+        o alerta é criado normalmente."""
+        from alertas.analise import _verificar_sem_geracao_diurna
+
+        snap_usina = SnapshotUsina.objects.create(
+            usina=usina,
+            coletado_em=timezone.now(),
+            potencia_kw=0.0,
+            energia_hoje_kwh=0.0,
+            energia_mes_kwh=0.0,
+            energia_total_kwh=0.0,
+            status='offline',
+            qtd_inversores=1,
+            qtd_inversores_online=0,
+            qtd_alertas=0,
+        )
+        snap_inv = SnapshotInversor.objects.create(
+            inversor=inversor,
+            coletado_em=timezone.now(),
+            estado='offline',
+            pac_kw=0.0,
+            energia_hoje_kwh=0.0,
+            energia_total_kwh=1000.0,
+            tensao_ac_v=0.0,
+        )
+
+        _verificar_sem_geracao_diurna(
+            usina, snap_usina, [(inversor, snap_inv)], timezone.now()
+        )
+
+        assert Alerta.objects.filter(
+            usina=usina, categoria='sem_geracao_diurna', estado='ativo'
+        ).exists()

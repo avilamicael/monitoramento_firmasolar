@@ -287,8 +287,30 @@ def _verificar_sem_geracao_diurna(usina, snapshot, inversores_snapshots, agora):
     independentemente de quantos inversores estão online. A mensagem é ajustada para
     diferenciar o caso "todos inversores offline" do "inversores online sem gerar",
     mas o tipo de alerta é o mesmo.
+
+    Coerência com inversores: alguns provedores (ex: Hoymiles) entregam payloads
+    internamente inconsistentes, onde o campo de potência no nível-usina vem zero
+    mas os inversores individuais estão gerando (pac_kw > 0) na mesma coleta.
+    Nesses casos, confiamos nos inversores — são a fonte primária — e NÃO criamos
+    o alerta. Também resolvemos alerta já aberto caso tenha sido criado por essa
+    mesma inconsistência em coletas anteriores.
     """
     chave = str(usina.id_usina_provedor)
+
+    soma_pac_inv = sum(
+        (snap_inv.pac_kw or 0)
+        for _, snap_inv in inversores_snapshots
+        if snap_inv is not None
+    )
+
+    if snapshot.potencia_kw <= 0 and soma_pac_inv > 0:
+        logger.warning(
+            'Usina %s (%s): payload incoerente — potencia_kw=%s mas soma pac_kw dos '
+            'inversores=%.3f. Alerta sem_geracao_diurna suprimido.',
+            usina.nome, usina.id_usina_provedor, snapshot.potencia_kw, soma_pac_inv,
+        )
+        _resolver_alerta_interno(usina, 'sem_geracao_diurna', chave)
+        return
 
     if snapshot.potencia_kw <= 0:
         total_inv = len(inversores_snapshots)
