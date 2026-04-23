@@ -17,6 +17,8 @@ export interface AlertaResumo {
   id: string
   usina: string
   usina_nome: string
+  usina_provedor: string
+  usina_id_provedor: string
   origem: OrigemAlerta
   categoria: string
   categoria_efetiva: string
@@ -36,8 +38,6 @@ export interface AlertaDetalhe extends AlertaResumo {
   equipamento_sn: string
   sugestao: string
   anotacoes: string
-  usina_provedor: string
-  usina_id_provedor: string
 }
 
 export interface AlertaPatch {

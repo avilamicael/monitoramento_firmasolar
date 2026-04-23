@@ -3,6 +3,7 @@ export type StatusGarantia = 'ativa' | 'vencida' | 'sem_garantia'
 export interface UsinaResumo {
   id: string
   nome: string
+  id_usina_provedor: string
   provedor: string
   capacidade_kwp: number
   ativo: boolean

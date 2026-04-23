@@ -25,12 +25,17 @@ class AlertaListSerializer(serializers.ModelSerializer):
 
     com_garantia = serializers.SerializerMethodField()
     usina_nome = serializers.CharField(source='usina.nome', read_only=True)
+    # Identificadores do provedor expostos também na listagem para permitir que a
+    # UI distinga usinas homônimas (ex: dois cadastros "CALISE CAROLINE" no Solarman).
+    usina_provedor = serializers.CharField(source='usina.provedor', read_only=True)
+    usina_id_provedor = serializers.CharField(source='usina.id_usina_provedor', read_only=True)
     categoria_efetiva = serializers.SerializerMethodField()
 
     class Meta:
         model = Alerta
         fields = [
-            'id', 'usina', 'usina_nome', 'origem', 'categoria', 'categoria_efetiva',
+            'id', 'usina', 'usina_nome', 'usina_provedor', 'usina_id_provedor',
+            'origem', 'categoria', 'categoria_efetiva',
             'mensagem', 'nivel', 'estado', 'inicio', 'fim',
             'com_garantia', 'criado_em', 'atualizado_em',
         ]

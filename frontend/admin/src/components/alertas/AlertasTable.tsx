@@ -28,6 +28,19 @@ const ESTADO_LABEL: Record<EstadoAlerta, string> = {
 }
 
 export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
+  // Detecta nomes de usina duplicados na listagem atual. Quando o mesmo nome
+  // aparece em mais de uma usina (ex: "CALISE CAROLINE" com dois cadastros no
+  // Solarman), mostramos o id do provedor para distinguir cada planta.
+  const nomesDuplicados = new Set<string>()
+  const vistos = new Set<string>()
+  for (const a of alertas) {
+    if (vistos.has(a.usina_nome)) {
+      nomesDuplicados.add(a.usina_nome)
+    } else {
+      vistos.add(a.usina_nome)
+    }
+  }
+
   return (
     <Table>
       <TableHeader>
@@ -50,6 +63,7 @@ export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
         ) : (
           alertas.map((alerta) => {
             const nivelConfig = NIVEL_CONFIG[alerta.nivel]
+            const mostrarIdProvedor = nomesDuplicados.has(alerta.usina_nome)
             return (
               <TableRow key={alerta.id} onClick={() => onSelectAlerta?.(alerta.id)}>
                 <TableCell>
@@ -59,6 +73,11 @@ export function AlertasTable({ alertas, onSelectAlerta }: AlertasTableProps) {
                   >
                     {alerta.usina_nome}
                   </Link>
+                  {mostrarIdProvedor && (
+                    <div className="text-xs text-muted-foreground">
+                      {alerta.usina_provedor} · #{alerta.usina_id_provedor}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell className="max-w-xs truncate">{alerta.mensagem}</TableCell>
                 <TableCell>

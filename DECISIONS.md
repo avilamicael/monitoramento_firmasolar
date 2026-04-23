@@ -4,6 +4,43 @@ Registro de decisões de arquitetura não triviais.
 
 ---
 
+## 2026-04-23 — Alertas: coerência entre payload-usina e inversores; UniqueConstraint parcial
+
+**Contexto**
+Usuário reportou dois sintomas, aparentemente independentes:
+
+1. Dois alertas "Usina sem geracao em horario comercial — potencia: 0.0 kW (0/0 inversores offline)" no mesmo horário para o mesmo cliente (CALISE CAROLINE). Parecia duplicação.
+2. Alerta Hoymiles "Sistema desligado" na usina "Cleber E Bruna", criado às 16:00 BRT, que persistia mesmo com a planta gerando normalmente no portal Hoymiles.
+
+Investigação ao vivo (banco de produção + API Hoymiles + portal web):
+
+- (1) Não é duplicação: são **duas usinas distintas** no Solarman com o mesmo nome (`id_usina_provedor` 65828007 e 65828022). Nenhum `GROUP BY (usina_id, categoria)` com `count>1`. Ambas estão genuinamente offline há 8 dias.
+- (2) Inconsistência transitória da Hoymiles: na coleta de 16:00, `warn_data.s_uoff=true` e `real_power=0` no payload de usina, mas os quatro inversores individuais na mesma coleta vieram com `pac_kw` somando ~3.77 kW. Meia hora depois, a própria API já retornava `s_uoff=false` e `real_power=528.6 W`. O portal web nunca mostrou anomalia.
+
+**Decisões**
+
+1. **Coerência inversor×usina para `sem_geracao_diurna`.** Em `_verificar_sem_geracao_diurna` (`alertas/analise.py`), se `snapshot.potencia_kw <= 0` mas `sum(pac_kw inversores) > 0` na mesma coleta, **não criar** alerta. Se já havia alerta aberto por ciclo anterior com a mesma incoerência, resolver. Log `warning` marcando a inconsistência para rastreio. Inversores são a fonte primária; o agregado do provedor só conta quando bate com eles.
+
+2. **Supressão inteligente para `sistema_desligado` (alertas do provedor).** Nova função `esta_gerando_agora(usina)` em `alertas/supressao_inteligente.py`: retorna True se o último `SnapshotUsina` tem `potencia_kw > 0` ou se algum `SnapshotInversor` da mesma coleta tem `pac_kw > 0`. Em `sincronizar_alertas` (`coleta/ingestao.py`), quando `catalogo.tipo == 'sistema_desligado'` e `esta_gerando_agora(usina)` é True, ignora a flag (alerta ativo pré-existente é resolvido pelo bloco de auto-resolução no fim do ciclo, bastando não ser "tocado"). A supressão pré-existente por desligamento gradual (pôr do sol) continua valendo como segunda checagem.
+
+3. **UniqueConstraint parcial em `Alerta` (defesa em profundidade).** Migration `0007_uniq_alerta_ativo` com dois constraints:
+   - `(usina, categoria)` WHERE `estado='ativo' AND origem='interno'`
+   - `(usina, catalogo_alarme)` WHERE `estado='ativo' AND origem='provedor'`
+   A lógica de aplicação (`_enriquecer_ou_criar`, `sincronizar_alertas`) já protege o invariante — o constraint é barreira final caso coletas concorrentes para o mesmo credencial escapem (cenário possível via `forcar-coleta` do admin concorrendo com Beat).
+
+4. **UX para usinas homônimas.** Na listagem de alertas e na listagem de usinas, quando dois registros compartilham o mesmo nome, mostrar `id_usina_provedor` abaixo do nome. Sem efeito colateral quando nomes são únicos. Serializadores (`AlertaListSerializer`, `UsinaListSerializer`) agora expõem `usina_id_provedor` / `id_usina_provedor`.
+
+**Por quê**
+- (1)+(2) são o mesmo problema: confiar cegamente no campo agregado do provedor quando o próprio payload é incoerente. A regra "se inversor diz que gera, acredita no inversor" é defensável, rastreável no log e não cria alerta silencioso (sempre loga o que suprimiu).
+- (3) fecha a brecha teórica de corrida de coleta. Não há duplicatas no banco hoje, mas o custo do constraint é zero e elimina uma classe inteira de bugs silenciosos no futuro.
+- (4) o operador precisa poder distinguir visualmente cadastros homônimos quando precisa agir sobre um deles.
+
+**Limitação**
+- A coerência inversor×usina só ajuda quando o provedor expõe inversores individuais. Provedores com `capacidades.suporta_inversores=False` continuam dependendo só do agregado.
+- `esta_gerando_agora` depende do último snapshot já estar salvo — ordem preservada em `coletar_dados_provedor` (snapshots antes de `sincronizar_alertas`).
+
+---
+
 ## 2026-04-20 — Alertas: um registro por evento, nunca reabrir resolvido
 
 **Contexto**

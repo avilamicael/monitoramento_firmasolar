@@ -48,7 +48,7 @@ class UsinaListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usina
         fields = [
-            'id', 'nome', 'provedor', 'capacidade_kwp', 'ativo',
+            'id', 'nome', 'id_usina_provedor', 'provedor', 'capacidade_kwp', 'ativo',
             'endereco', 'cidade', 'telefone',
             'status_garantia', 'criado_em', 'atualizado_em',
         ]

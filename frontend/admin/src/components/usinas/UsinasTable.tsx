@@ -17,6 +17,18 @@ interface UsinasTableProps {
 }
 
 export function UsinasTable({ usinas, onEdit }: UsinasTableProps) {
+  // Detecta nomes homônimos na lista — quando houver, mostramos o id do
+  // provedor abaixo do nome para que o operador distinga cada planta.
+  const nomesDuplicados = new Set<string>()
+  const vistos = new Set<string>()
+  for (const u of usinas) {
+    if (vistos.has(u.nome)) {
+      nomesDuplicados.add(u.nome)
+    } else {
+      vistos.add(u.nome)
+    }
+  }
+
   return (
     <Table>
       <TableHeader>
@@ -45,6 +57,11 @@ export function UsinasTable({ usinas, onEdit }: UsinasTableProps) {
                 >
                   {usina.nome}
                 </Link>
+                {nomesDuplicados.has(usina.nome) && (
+                  <div className="text-xs text-muted-foreground">
+                    #{usina.id_usina_provedor}
+                  </div>
+                )}
               </TableCell>
               <TableCell>{usina.provedor}</TableCell>
               <TableCell>{usina.capacidade_kwp} kWp</TableCell>
