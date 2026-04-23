@@ -6,16 +6,19 @@ estas funções analisam snapshots coletados para decidir se um alerta represent
 de fato um problema ou é um comportamento operacional esperado.
 
 Uso em sincronizar_alertas():
-    from alertas.supressao_inteligente import e_desligamento_gradual
-    if catalogo.tipo == 'sistema_desligado' and e_desligamento_gradual(usina):
-        continue  # pôr do sol — não criar alerta
+    from alertas.supressao_inteligente import e_desligamento_gradual, esta_gerando_agora
+    if catalogo.tipo == 'sistema_desligado':
+        if esta_gerando_agora(usina):
+            continue  # payload do provedor incoerente — a usina está gerando
+        if e_desligamento_gradual(usina):
+            continue  # pôr do sol — não criar alerta
 """
 import logging
 from datetime import timedelta
 
 from django.utils import timezone
 
-from usinas.models import Usina, SnapshotUsina
+from usinas.models import Usina, SnapshotUsina, SnapshotInversor
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,11 @@ logger = logging.getLogger(__name__)
 _LIMIAR_PCT_CAPACIDADE = 0.05   # 5% da capacidade instalada (kWp)
 _LIMIAR_ABS_KW = 1.0            # mínimo absoluto em kW (para usinas sem capacidade cadastrada)
 _JANELA_HORAS = 24              # janela de busca de snapshots (horas)
+
+# Janela para cruzar SnapshotUsina com SnapshotInversor da mesma coleta — idêntica
+# à definida em alertas/analise.py. Compartilhar a constante não vale a dependência
+# inversa (analise consome supressao_inteligente em outros caminhos).
+_JANELA_CICLO = timedelta(minutes=5)
 
 
 def e_desligamento_gradual(usina: Usina) -> bool:
@@ -74,3 +82,54 @@ def e_desligamento_gradual(usina: Usina) -> bool:
         'gradual (suprime)' if gradual else 'abrupto (não suprime)',
     )
     return gradual
+
+
+def esta_gerando_agora(usina: Usina) -> bool:
+    """
+    Retorna True se a usina está, neste instante, gerando energia — seja no nível
+    da usina (último SnapshotUsina com potencia_kw > 0) ou no nível de inversor
+    (algum SnapshotInversor da mesma coleta com pac_kw > 0).
+
+    Motivação: alguns provedores entregam payloads internamente inconsistentes —
+    a flag `sistema_desligado` é verdadeira enquanto o próprio payload devolve
+    potência de usina ou de inversor acima de zero. Caso real (2026-04-23):
+    Hoymiles / usina "Cleber E Bruna" veio com `s_uoff=true`, `real_power=0` e,
+    ao mesmo tempo, inversores com pac_kw somando ~3.77 kW.
+
+    Conservador por construção: se não houver snapshot recente, retorna False
+    (i.e., deixa o alerta passar). Só suprime quando há evidência concreta de
+    geração.
+    """
+    snap = (
+        SnapshotUsina.objects
+        .filter(usina=usina)
+        .order_by('-coletado_em')
+        .values('coletado_em', 'potencia_kw')
+        .first()
+    )
+    if snap is None:
+        return False
+
+    if (snap['potencia_kw'] or 0) > 0:
+        logger.debug(
+            'supressao_inteligente: [%s] %s — usina gera %.3f kW agora, ignora sistema_desligado',
+            usina.provedor, usina.nome, snap['potencia_kw'],
+        )
+        return True
+
+    ts = snap['coletado_em']
+    soma_pac = SnapshotInversor.objects.filter(
+        inversor__usina=usina,
+        coletado_em__gte=ts - _JANELA_CICLO,
+        coletado_em__lte=ts + _JANELA_CICLO,
+        pac_kw__gt=0,
+    ).count()
+    if soma_pac > 0:
+        logger.debug(
+            'supressao_inteligente: [%s] %s — %d inversor(es) com pac_kw>0 no ciclo atual, '
+            'ignora sistema_desligado',
+            usina.provedor, usina.nome, soma_pac,
+        )
+        return True
+
+    return False

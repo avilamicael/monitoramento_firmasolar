@@ -20,7 +20,7 @@ from usinas.models import Usina, SnapshotUsina, Inversor, SnapshotInversor, Gara
 from alertas.models import Alerta, CatalogoAlarme, RegraSupressao
 from coleta.models import ConfiguracaoSistema
 from alertas.categorizacao import inferir_categoria
-from alertas.supressao_inteligente import e_desligamento_gradual
+from alertas.supressao_inteligente import e_desligamento_gradual, esta_gerando_agora
 
 logger = logging.getLogger(__name__)
 
@@ -247,10 +247,23 @@ class ServicoIngestao:
                 if catalogo.nivel_sobrescrito:
                     nivel_efetivo = catalogo.nivel_padrao
 
-                # Supressão inteligente: desligamento gradual (pôr do sol normal)
-                # Só aplica para sistema_desligado sem alerta já aberto do mesmo tipo.
-                # Se já existe alerta aberto (shutdown real anterior), processa normalmente.
+                # Supressões inteligentes para sistema_desligado:
+                #   1) esta_gerando_agora: payload incoerente — a flag diz "desligado"
+                #      mas o próprio snapshot (usina ou inversor) mostra geração.
+                #      Aplica inclusive para resolver alertas já abertos por ciclos
+                #      anteriores com a mesma incoerência (o bloco de auto-resolução
+                #      no final de sincronizar_alertas cuida disso: basta não tocar
+                #      o alerta neste ciclo).
+                #   2) e_desligamento_gradual: pôr do sol normal — só aplica quando
+                #      ainda não há alerta aberto (não queremos suprimir retroativamente
+                #      um shutdown real que começou antes do entardecer).
                 if catalogo.tipo == 'sistema_desligado':
+                    if esta_gerando_agora(usina):
+                        logger.info(
+                            '%s: %s — flag sistema_desligado ignorada (usina gerando agora)',
+                            provedor, usina.nome,
+                        )
+                        continue
                     ja_aberto = Alerta.objects.filter(
                         usina=usina,
                         catalogo_alarme=catalogo,
