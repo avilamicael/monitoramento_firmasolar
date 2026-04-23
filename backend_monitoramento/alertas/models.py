@@ -280,6 +280,21 @@ class Alerta(models.Model):
             models.Index(fields=['origem', 'estado']),
             models.Index(fields=['categoria', 'estado']),
         ]
+        constraints = [
+            # Defesa em profundidade contra duplicatas — a lógica de aplicação
+            # (_enriquecer_ou_criar e sincronizar_alertas) já garante o invariante,
+            # mas o DB é o último recurso em caso de concorrência não prevista.
+            models.UniqueConstraint(
+                fields=['usina', 'categoria'],
+                condition=models.Q(estado='ativo', origem='interno'),
+                name='uniq_alerta_ativo_interno_por_usina_categoria',
+            ),
+            models.UniqueConstraint(
+                fields=['usina', 'catalogo_alarme'],
+                condition=models.Q(estado='ativo', origem='provedor'),
+                name='uniq_alerta_ativo_provedor_por_usina_catalogo',
+            ),
+        ]
 
     def __str__(self):
         prefixo = '[INTERNO]' if self.origem == 'interno' else '[PROVEDOR]'
